@@ -5,6 +5,7 @@ import { RootLayout } from './app/routing/RootLayout'
 import { Start } from './app/routing/Start'
 import { CoachSelectPage } from './features/coach/CoachSelectPage'
 import { MatchesPage } from './features/matches/MatchesPage'
+import { EditMatchPage } from './features/matches/EditMatchPage'
 import { MatchHubPage } from './features/matches/MatchHubPage'
 import { NewMatchPage } from './features/matches/NewMatchPage'
 import { PlayerFormPage } from './features/players/PlayerFormPage'
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
           { path: 'partidos', Component: MatchesPage },
           { path: 'partidos/nuevo', Component: NewMatchPage },
           { path: 'partidos/:matchId', Component: MatchHubPage },
+          { path: 'partidos/:matchId/editar', Component: EditMatchPage },
           { path: 'jugadores', Component: PlayersPage },
           { path: 'jugadores/nuevo', Component: PlayerFormPage },
           { path: 'jugadores/:playerId', Component: PlayerFormPage },

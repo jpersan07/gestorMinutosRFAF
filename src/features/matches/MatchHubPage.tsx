@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { useApp } from '../../app/context'
 import { useCrest } from '../../app/useCrest'
+import { canEditMatchDetails } from '../../domain'
+import { Button } from '../../ui/Button'
 import { Crest } from '../../ui/Crest'
 import { Page } from '../../ui/Page'
 import { StatusBadge } from '../../ui/StatusBadge'
@@ -11,6 +13,7 @@ import { matchDetailsLine } from './matchDetails'
 export function MatchHubPage() {
   const { matchId = '' } = useParams()
   const { db } = useApp()
+  const navigate = useNavigate()
   const match = useLiveQuery(async () => (await db.matches.get(matchId)) ?? null, [db, matchId])
   const crest = useCrest(match?.crestId ?? null)
 
@@ -31,6 +34,14 @@ export function MatchHubPage() {
         <p className="text-muted">{matchDetailsLine(match)}</p>
         <StatusBadge status={match.status} />
       </section>
+
+      <nav aria-label="Acciones del partido" className="flex flex-col gap-3">
+        {canEditMatchDetails(match.status) && (
+          <Button variant="secondary" onClick={() => navigate(`/partidos/${match.id}/editar`)}>
+            EDITAR
+          </Button>
+        )}
+      </nav>
     </Page>
   )
 }
