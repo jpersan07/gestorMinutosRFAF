@@ -5,6 +5,7 @@ import {
   clearSlot,
   emptyLineup,
   missingSlots,
+  sameLineup,
   validateLineup,
   type Lineup,
   type Result,
@@ -142,5 +143,16 @@ describe('cambio de formación', () => {
 
   it('a la misma formación no cambia nada', () => {
     expect(changeFormation(LINEUP_433, '4-3-3')).toBe(LINEUP_433)
+  })
+})
+
+describe('comparar alineaciones', () => {
+  it('compara formación y posiciones, no el orden de las claves', () => {
+    const reordered: Lineup = { formationId: '4-3-3', slots: Object.fromEntries(Object.entries(LINEUP_433.slots).reverse()) }
+    expect(sameLineup(LINEUP_433, reordered)).toBe(true)
+    expect(sameLineup(LINEUP_433, clearSlot(LINEUP_433, 'GK'))).toBe(false)
+    expect(sameLineup(LINEUP_433, changeFormation(LINEUP_433, '4-3-2-1'))).toBe(false)
+    expect(sameLineup(null, undefined)).toBe(false)
+    expect(sameLineup(null, null)).toBe(true)
   })
 })

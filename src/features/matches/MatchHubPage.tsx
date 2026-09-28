@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate, useParams } from 'react-router'
 import { useApp } from '../../app/context'
+import { isLive } from '../../app/matchStatus'
 import { useCrest } from '../../app/useCrest'
 import { getSquad } from '../../data'
 import { canEditMatchDetails } from '../../domain'
@@ -38,6 +39,14 @@ export function MatchHubPage() {
       </section>
 
       <nav aria-label="Acciones del partido" className="flex flex-col gap-3">
+        {canEditMatchDetails(match.status) && (
+          <Button onClick={() => navigate(`/partidos/${match.id}/juego`)}>PREPARAR ALINEACIÓN</Button>
+        )}
+        {isLive(match.status) && (
+          <Button className="min-h-16 text-xl" onClick={() => navigate(`/partidos/${match.id}/juego`)}>
+            CONTINUAR PARTIDO
+          </Button>
+        )}
         {canEditMatchDetails(match.status) && (
           <Button variant="secondary" onClick={() => navigate(`/partidos/${match.id}/editar`)}>
             EDITAR

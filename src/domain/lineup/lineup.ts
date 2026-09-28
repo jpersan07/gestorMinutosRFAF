@@ -105,3 +105,11 @@ export function validateLineup(lineup: Lineup, squad: readonly Id[]): Result<Lin
 
   return ok({ formationId: lineup.formationId, slots: { ...lineup.slots } })
 }
+
+/** Misma formación y mismos jugadores en las mismas posiciones. */
+export function sameLineup(a: Lineup | null | undefined, b: Lineup | null | undefined): boolean {
+  if (!a || !b) return a === b
+  if (a.formationId !== b.formationId) return false
+  const slotsA = Object.keys(a.slots)
+  return slotsA.length === Object.keys(b.slots).length && slotsA.every((slotId) => a.slots[slotId] === b.slots[slotId])
+}

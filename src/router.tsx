@@ -8,6 +8,7 @@ import { MatchesPage } from './features/matches/MatchesPage'
 import { EditMatchPage } from './features/matches/EditMatchPage'
 import { MatchHubPage } from './features/matches/MatchHubPage'
 import { NewMatchPage } from './features/matches/NewMatchPage'
+import { MatchScreen } from './features/match/MatchScreen'
 import { SquadPage } from './features/squad/SquadPage'
 import { PlayerFormPage } from './features/players/PlayerFormPage'
 import { PlayersPage } from './features/players/PlayersPage'
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
           { path: 'partidos/:matchId', Component: MatchHubPage },
           { path: 'partidos/:matchId/editar', Component: EditMatchPage },
           { path: 'partidos/:matchId/convocatoria', Component: SquadPage },
+          { path: 'partidos/:matchId/juego', Component: MatchScreen },
           { path: 'jugadores', Component: PlayersPage },
           { path: 'jugadores/nuevo', Component: PlayerFormPage },
           { path: 'jugadores/:playerId', Component: PlayerFormPage },

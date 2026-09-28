@@ -33,3 +33,34 @@ export async function createMatch(page: Page, match: NewMatch) {
   await page.getByRole('link', { name: 'Volver' }).click()
   await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
 }
+
+export const playerName = (n: number) => `Jugador ${String(n).padStart(2, '0')}`
+
+/** Desde la lista de partidos: añade `count` jugadores ("Jugador 01"…) y vuelve a la lista. */
+export async function addPlayers(page: Page, count: number) {
+  await page.getByRole('link', { name: 'JUGADORES' }).click()
+  for (let n = 1; n <= count; n++) await addPlayer(page, playerName(n), n)
+  await page.getByRole('link', { name: 'Volver' }).click()
+  await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
+}
+
+/** En el editor: toca la primera posición vacía y elige al jugador. */
+export async function fillNextSlot(page: Page, n: number) {
+  await page.getByRole('button', { name: /: vacía$/ }).first().click()
+  await page.getByRole('dialog').getByRole('button', { name: new RegExp(playerName(n)) }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
+
+/** Equipo de `players` jugadores, un partido, convocatoria completa y alineación 4-3-3 confirmada. */
+export async function prepareMatch(page: Page, opponent = 'CD Málaga', players = 14) {
+  await chooseCoach(page)
+  await addPlayers(page, players)
+  await createMatch(page, { opponent })
+  await page.getByRole('link', { name: new RegExp(opponent) }).click()
+  await page.getByRole('button', { name: 'PREPARAR ALINEACIÓN' }).click()
+  await page.getByRole('button', { name: 'CONVOCAR A TODOS' }).click()
+  await page.getByRole('button', { name: '4-3-3' }).click()
+  for (let n = 1; n <= 11; n++) await fillNextSlot(page, n)
+  await page.getByRole('button', { name: 'CONFIRMAR ALINEACIÓN' }).click()
+  await expect(page.getByText('✓ ALINEACIÓN CONFIRMADA')).toBeVisible()
+}
