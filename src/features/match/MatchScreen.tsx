@@ -34,7 +34,7 @@ export function MatchScreen() {
   }
 
   if (state.status === 'finished' || state.status === 'saved') {
-    return <Navigate to={`/partidos/${matchId}`} replace />
+    return <Navigate to={`/partidos/${matchId}/resumen`} replace />
   }
   if (!view.isController) return <TakeControl view={view} />
 

@@ -52,6 +52,11 @@ export function MatchHubPage() {
             EDITAR
           </Button>
         )}
+        {(match.status === 'finished' || match.status === 'saved') && (
+          <Button variant={match.status === 'finished' ? 'primary' : 'secondary'} onClick={() => navigate(`/partidos/${match.id}/resumen`)}>
+            {match.status === 'finished' ? 'RESUMEN E INFORME' : 'RESUMEN'}
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => navigate(`/partidos/${match.id}/convocatoria`)}>
           {squad ? `CONVOCATORIA · ${squad.length}` : 'CONVOCATORIA'}
         </Button>

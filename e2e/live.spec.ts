@@ -65,8 +65,23 @@ test('partido: reloj, cambios, deshacer, recarga, descanso, 2ª parte con reentr
   await page.clock.fastForward('12:42')
   await substitute(page, 'MC', p(7), p(13))
 
-  // 90:00: final automático.
+  // 90:00: final automático → resumen con minutos calculados desde los eventos.
   await page.clock.fastForward('35:00')
-  await expect(page.getByRole('heading', { name: 'PARTIDO', exact: true })).toBeVisible()
-  await expect(page.getByText('Finalizado')).toBeVisible()
+  await expect(page.getByText('PARTIDO FINALIZADO')).toBeVisible()
+  const minutes = page.getByRole('region', { name: 'MINUTOS' })
+  const row = (n: number) => minutes.getByRole('listitem').filter({ hasText: p(n) })
+  await expect(row(1)).toContainText("90'")
+  await expect(row(10)).toContainText("65'") // 0–20 y reentrada 45–90
+  await expect(row(12)).toContainText("70'") // 20–90
+  await expect(row(11)).toContainText("45'") // se queda en el descanso
+  await expect(row(7)).toContainText("57'")
+  await expect(row(13)).toContainText("33'")
+  await expect(row(14)).toContainText("0'")
+
+  const changes = page.getByRole('region', { name: 'CAMBIOS' })
+  await expect(changes.getByRole('listitem')).toHaveText([
+    `20' ${p(10)} → ${p(12)}`,
+    `45' Descanso: salen ${p(11)} · entran ${p(10)}`,
+    `57' ${p(7)} → ${p(13)}`,
+  ])
 })
