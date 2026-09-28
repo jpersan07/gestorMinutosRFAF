@@ -502,4 +502,4 @@ Propongo **un cambio respecto al PRD**: la persistencia **local** (IndexedDB) en
 - Mensaje de WhatsApp: jugadores en orden alfabético (no por minutos, para no publicar un ranking).
 - Fecha y hora del partido como fecha/hora locales (sin zona horaria).
 - Sin límite de cambios (no especificado).
-- **Pendiente de confirmar en Fase 2**: si no hay convocatoria guardada al preparar la alineación, ¿se propone "convocar a todos los activos" con un botón?
+- Convocatoria: botón **"CONVOCAR A TODOS"** (selecciona todos los jugadores activos); después se quitan individualmente. La lista de selección se ordena por minutos acumulados; el mensaje de WhatsApp sigue en orden alfabético.
