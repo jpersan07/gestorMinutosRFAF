@@ -1,0 +1,20 @@
+// API pública del dominio. Todo es TypeScript puro: sin React, Vite, Supabase,
+// IndexedDB ni APIs del navegador.
+
+export * from './types'
+export * from './constants'
+export * from './errors'
+export * from './formations'
+export * from './lineup/lineup'
+export * from './match/events'
+export * from './match/state'
+export * from './match/clock'
+export * from './match/emit'
+export * from './match/evolve'
+export * from './match/decide'
+export * from './match/tick'
+export * from './match/engine'
+export * from './minutes/intervals'
+export * from './minutes/minutes'
+export * from './minutes/summary'
+export * from './stats/aggregate'

@@ -1,0 +1,56 @@
+export interface SquadMessageInput {
+  readonly opponent: string
+  /** Fecha local del partido, 'YYYY-MM-DD'. */
+  readonly date: string
+  /** Hora local, 'HH:MM'. Opcional. */
+  readonly kickoffTime?: string | null
+  readonly location?: string | null
+  readonly players: readonly { readonly name: string }[]
+}
+
+const weekdayFormatter = new Intl.DateTimeFormat('es-ES', { weekday: 'long', timeZone: 'UTC' })
+
+/** '2026-09-14' → 'Lunes 14/09'. Se trabaja en UTC para que la zona horaria no mueva el día. */
+export function formatMatchDay(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  if (!year || !month || !day) return isoDate
+  const weekday = weekdayFormatter.format(new Date(Date.UTC(year, month - 1, day)))
+  const capitalized = weekday.charAt(0).toLocaleUpperCase('es') + weekday.slice(1)
+  return `${capitalized} ${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`
+}
+
+/**
+ * Mensaje de convocatoria:
+ *
+ *   VS MÁLAGA CF
+ *   Sábado 14/09 - 18:00 - Campo Municipal
+ *
+ *   CONVOCADOS:
+ *   - Carlos
+ *   - Juan
+ *
+ * Los jugadores van en orden alfabético (no por minutos: el grupo no debe ver un ranking).
+ * Si falta hora o ubicación, se omiten.
+ */
+export function buildSquadMessage(input: SquadMessageInput): string {
+  const details = [formatMatchDay(input.date), input.kickoffTime?.trim(), input.location?.trim()]
+    .filter((part): part is string => Boolean(part))
+    .join(' - ')
+
+  const names = input.players
+    .map((player) => player.name.trim())
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+
+  return [
+    `VS ${input.opponent.trim().toLocaleUpperCase('es')}`,
+    details,
+    '',
+    'CONVOCADOS:',
+    ...names.map((name) => `- ${name}`),
+  ].join('\n')
+}
+
+/** Abre WhatsApp con el texto preparado; el entrenador elige el grupo. */
+export function whatsappShareUrl(text: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`
+}
