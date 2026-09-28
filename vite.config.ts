@@ -40,5 +40,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    // IndexedDB en memoria para los tests de la capa de datos (se carga antes que Dexie).
+    setupFiles: ['fake-indexeddb/auto'],
   },
 })
