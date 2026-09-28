@@ -1,9 +1,17 @@
 @import 'tailwindcss';
 
+/* Alto contraste para usar al aire libre: fondo verde muy oscuro, texto casi blanco. */
 @theme {
   --color-pitch: #0b1f14;
-  --color-pitch-line: #e8f5ec;
+  --color-panel: #13301f;
+  --color-panel-strong: #1c4430;
+  --color-line: #e8f5ec;
+  --color-muted: #a7c4b1;
   --color-accent: #4ade80;
+  --color-accent-ink: #052e16;
+  --color-warn: #facc15;
+  --color-danger: #f87171;
+  --color-danger-ink: #450a0a;
 }
 
 html,
@@ -14,7 +22,13 @@ body,
 
 body {
   background: var(--color-pitch);
-  color: var(--color-pitch-line);
+  color: var(--color-line);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+}
+
+/* Números del cronómetro sin saltos de ancho. */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
