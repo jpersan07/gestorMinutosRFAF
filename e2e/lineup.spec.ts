@@ -58,7 +58,8 @@ test('editor de alineación: convocatoria, formación, posiciones, duplicados y 
 test('PLAY inicia el partido y bloquea datos y convocatoria', async ({ page }) => {
   await prepareMatch(page)
   await page.getByRole('button', { name: '▶ COMENZAR' }).click()
-  await expect(page.getByText('Partido en juego.')).toBeVisible()
+  await expect(page.getByRole('timer', { name: 'Cronómetro' })).toBeVisible()
+  await expect(page.getByText('PRIMERA PARTE')).toBeVisible()
 
   await page.getByRole('link', { name: 'Volver' }).click()
   await expect(page.getByText('En juego')).toBeVisible()

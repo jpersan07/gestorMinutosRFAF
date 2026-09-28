@@ -77,7 +77,7 @@ export function LineupEditor({ lineup, players, onChange }: LineupEditorProps) {
       {!lineup || !formation ? (
         <p className="rounded-xl bg-panel p-6 text-center text-xl font-black">ELIGE FORMACIÓN</p>
       ) : (
-        <Pitch className="max-h-[62dvh] w-auto">
+        <Pitch className="mx-auto w-full max-w-[calc(62dvh*0.68)]">
           {formation.slots.map((slot) => {
             const player = byId.get(lineup.slots[slot.id] ?? '')
             return (

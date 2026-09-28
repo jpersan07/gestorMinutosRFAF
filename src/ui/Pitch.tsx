@@ -2,13 +2,11 @@ import type { ReactNode } from 'react'
 
 /**
  * Campo en vertical con la portería propia ABAJO. Los hijos se colocan con
- * coordenadas 0–100 (ver PitchSlot). Se ajusta al alto disponible sin deformarse.
+ * coordenadas 0–100 (ver PitchSlot). Mantiene la proporción; el ancho lo decide quien lo usa.
  */
 export function Pitch({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div
-      className={`relative mx-auto aspect-[68/100] w-full max-w-full overflow-hidden rounded-2xl bg-[#14532d] ${className}`}
-    >
+    <div className={`relative aspect-[68/100] overflow-hidden rounded-2xl bg-[#14532d] [container-type:inline-size] ${className}`}>
       <svg
         viewBox="0 0 68 100"
         preserveAspectRatio="none"

@@ -64,3 +64,12 @@ export async function prepareMatch(page: Page, opponent = 'CD Málaga', players 
   await page.getByRole('button', { name: 'CONFIRMAR ALINEACIÓN' }).click()
   await expect(page.getByText('✓ ALINEACIÓN CONFIRMADA')).toBeVisible()
 }
+
+/** En la pantalla de partido: toca al jugador del campo, elige quién entra y confirma. */
+export async function substitute(page: Page, slot: string, outName: string, inName: string) {
+  await page.getByRole('button', { name: `${slot}: ${outName}` }).click()
+  await page.getByRole('dialog', { name: 'CAMBIO' }).getByRole('button', { name: new RegExp(inName) }).click()
+  await expect(page.getByRole('dialog', { name: '¿Confirmar cambio?' })).toBeVisible()
+  await page.getByRole('button', { name: 'CONFIRMAR' }).click()
+  await expect(page.getByRole('button', { name: `${slot}: ${inName}` })).toBeVisible()
+}

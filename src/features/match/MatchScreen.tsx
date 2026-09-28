@@ -1,6 +1,12 @@
 import { Navigate, useParams } from 'react-router'
+import { useAutoTick } from '../../app/match/useAutoTick'
 import { useMatch } from '../../app/match/useMatch'
+import { useNow } from '../../app/match/useNow'
+import { useWakeLock } from '../../app/match/useWakeLock'
+import { initialMatchState } from '../../domain'
 import { Page } from '../../ui/Page'
+import { HalftimePanel } from './HalftimePanel'
+import { LivePanel } from './LivePanel'
 import { SetupScreen } from './SetupScreen'
 import { TakeControl } from './TakeControl'
 
@@ -8,6 +14,15 @@ import { TakeControl } from './TakeControl'
 export function MatchScreen() {
   const { matchId = '' } = useParams()
   const view = useMatch(matchId)
+  const now = useNow()
+  const state = view?.state ?? initialMatchState(matchId)
+  const live = state.status === 'first_half' || state.status === 'halftime' || state.status === 'second_half'
+  const controlling = Boolean(view?.isController)
+
+  // Los finales de parte los registra el dispositivo que controla el partido.
+  useAutoTick(state, now, live && controlling)
+  // Pantalla encendida mientras el partido está en juego o en el descanso.
+  useWakeLock(live && controlling)
 
   if (view === undefined) return null
   if (view === null) {
@@ -18,21 +33,19 @@ export function MatchScreen() {
     )
   }
 
-  const { status } = view.state
-  if (status === 'finished' || status === 'saved') return <Navigate to={`/partidos/${matchId}`} replace />
+  if (state.status === 'finished' || state.status === 'saved') {
+    return <Navigate to={`/partidos/${matchId}`} replace />
+  }
   if (!view.isController) return <TakeControl view={view} />
 
-  switch (status) {
+  switch (state.status) {
     case 'scheduled':
     case 'setup':
       return <SetupScreen view={view} />
     case 'first_half':
-    case 'halftime':
     case 'second_half':
-      return (
-        <Page title="PARTIDO" back={`/partidos/${matchId}`}>
-          <p className="rounded-xl bg-panel p-4 text-lg font-bold">Partido en juego.</p>
-        </Page>
-      )
+      return <LivePanel view={view} now={now} />
+    case 'halftime':
+      return <HalftimePanel view={view} now={now} />
   }
 }
