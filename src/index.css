@@ -14,6 +14,11 @@
   --color-danger-ink: #450a0a;
 }
 
+:root {
+  /* Controles nativos (selector de fecha/hora, casillas) en modo oscuro. */
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {
