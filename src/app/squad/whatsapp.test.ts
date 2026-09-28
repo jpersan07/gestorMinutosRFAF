@@ -28,6 +28,16 @@ describe('mensaje de convocatoria para WhatsApp', () => {
     expect(message.split('\n').slice(0, 2)).toEqual(['VS ATLÉTICO XXX', 'Sábado 03/10'])
   })
 
+  it('sin fecha, hora ni ubicación solo queda el rival y la lista', () => {
+    const message = buildSquadMessage({ opponent: 'Rival', date: null, players: [{ name: 'Juan' }] })
+    expect(message).toBe(['VS RIVAL', '', 'CONVOCADOS:', '- Juan'].join('\n'))
+  })
+
+  it('sin fecha pero con hora y ubicación', () => {
+    const message = buildSquadMessage({ opponent: 'Rival', kickoffTime: '10:00', location: 'Campo', players: [] })
+    expect(message.split('\n')[1]).toBe('10:00 - Campo')
+  })
+
   it('ordena alfabéticamente respetando acentos, no por minutos', () => {
     const message = buildSquadMessage({
       opponent: 'Rival',

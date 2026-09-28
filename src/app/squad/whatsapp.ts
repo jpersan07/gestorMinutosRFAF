@@ -1,7 +1,7 @@
 export interface SquadMessageInput {
   readonly opponent: string
-  /** Fecha local del partido, 'YYYY-MM-DD'. */
-  readonly date: string
+  /** Fecha local del partido, 'YYYY-MM-DD'. Opcional. */
+  readonly date?: string | null
   /** Hora local, 'HH:MM'. Opcional. */
   readonly kickoffTime?: string | null
   readonly location?: string | null
@@ -30,10 +30,10 @@ export function formatMatchDay(isoDate: string): string {
  *   - Juan
  *
  * Los jugadores van en orden alfabético (no por minutos: el grupo no debe ver un ranking).
- * Si falta hora o ubicación, se omiten.
+ * Si falta fecha, hora o ubicación, se omiten (y la línea entera si no hay ninguna).
  */
 export function buildSquadMessage(input: SquadMessageInput): string {
-  const details = [formatMatchDay(input.date), input.kickoffTime?.trim(), input.location?.trim()]
+  const details = [input.date ? formatMatchDay(input.date) : null, input.kickoffTime?.trim(), input.location?.trim()]
     .filter((part): part is string => Boolean(part))
     .join(' - ')
 
@@ -43,7 +43,7 @@ export function buildSquadMessage(input: SquadMessageInput): string {
 
   return [
     `VS ${input.opponent.trim().toLocaleUpperCase('es')}`,
-    details,
+    ...(details ? [details] : []),
     '',
     'CONVOCADOS:',
     ...names.map((name) => `- ${name}`),

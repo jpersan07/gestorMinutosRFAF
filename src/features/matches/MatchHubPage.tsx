@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate, useParams } from 'react-router'
 import { useApp } from '../../app/context'
 import { useCrest } from '../../app/useCrest'
+import { getSquad } from '../../data'
 import { canEditMatchDetails } from '../../domain'
 import { Button } from '../../ui/Button'
 import { Crest } from '../../ui/Crest'
@@ -16,6 +17,7 @@ export function MatchHubPage() {
   const navigate = useNavigate()
   const match = useLiveQuery(async () => (await db.matches.get(matchId)) ?? null, [db, matchId])
   const crest = useCrest(match?.crestId ?? null)
+  const squad = useLiveQuery(() => getSquad(db, matchId), [db, matchId])
 
   if (match === undefined) return null
   if (match === null) {
@@ -41,6 +43,9 @@ export function MatchHubPage() {
             EDITAR
           </Button>
         )}
+        <Button variant="secondary" onClick={() => navigate(`/partidos/${match.id}/convocatoria`)}>
+          {squad ? `CONVOCATORIA · ${squad.length}` : 'CONVOCATORIA'}
+        </Button>
       </nav>
     </Page>
   )
