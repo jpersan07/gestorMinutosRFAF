@@ -1,6 +1,6 @@
 # Plan Fase 2 — Interfaz + IndexedDB
 
-Estado: **APROBADO** — en implementación por bloques (un commit por bloque).
+Estado: **IMPLEMENTADO** — Fase 2 completa (bloques 1–9, un commit por bloque). Sin Supabase: todo se guarda en el dispositivo.
 Objetivo: la app completa usable en un móvil **sin Supabase**. Todo se guarda en el propio dispositivo (IndexedDB) y el diseño deja la sincronización (Fase 3) como un módulo que se añade sin tocar la interfaz.
 
 Dependencias nuevas: `dexie`, `dexie-react-hooks`, `react-router` (v7, modo SPA). Tests: `fake-indexeddb`.
@@ -233,3 +233,16 @@ UI ⇄ hooks (src/app) ⇄ repositorios Dexie (src/data)   ← Fase 2
 - Escudo guardado como data URL de una imagen redimensionada (serializable).
 - Arranque: se crean el equipo ("Mi equipo"), la temporada actual (julio–junio) y los entrenadores ISAAC, JORDI y JOSÉ, que son los usuarios reales del PRD y no datos de prueba.
 - La partida (`START_SETUP`) empieza al elegir formación por primera vez: el partido pasa a "En preparación" y este móvil pasa a controlarlo.
+
+### Decisiones menores tomadas durante la implementación
+- La lista para elegir jugador en el editor muestra primero los libres y después los ya colocados (con su posición).
+- Al intentar colocar a un jugador que ya ocupa otra posición: mensaje claro + botón **MOVER AQUÍ**.
+- Cambiar la alineación ya confirmada obliga a volver a confirmar antes de PLAY / CONTINUAR.
+- En el descanso, la alineación de la 2ª parte se precarga con cómo acabó la 1ª.
+- El informe se guarda solo mientras se escribe (y al pasar la app a segundo plano); "Guardado en el dispositivo" solo aparece si no hubo cambios durante la escritura.
+- En la hoja de cambio, cada suplente muestra los minutos que lleva **en este partido**; en la convocatoria, los minutos **de la temporada**.
+- En horizontal los nombres del campo se abrevian (el dorsal siempre se ve); el uso principal es en vertical.
+
+### Verificación
+- Tests unitarios (Vitest): dominio + capa de datos con IndexedDB simulada (flujo completo, concurrencia, reabrir la base de datos).
+- Tests E2E (Playwright, móvil, reloj simulado): jugadores, partidos, EDITAR, convocatoria + WhatsApp, editor, PLAY, partido completo, resumen y guardado, recuperación (cerrar/reabrir en cada fase, pantalla bloqueada durante el final de parte, recarga en el descanso, sin conexión) y el flujo completo del PRD §37.
