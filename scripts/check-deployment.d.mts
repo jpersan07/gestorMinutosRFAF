@@ -7,5 +7,10 @@ export interface DeploymentCheck {
 
 export function checkDeployment(
   baseUrl: string,
-  options?: { readonly requireHeaders?: boolean; readonly expectSupabase?: string; readonly fetch?: typeof fetch },
+  options?: {
+    readonly requireHeaders?: boolean
+    readonly expectSupabase?: string
+    readonly forbidSupabase?: readonly string[]
+    readonly fetch?: typeof fetch
+  },
 ): Promise<{ readonly ok: boolean; readonly checks: DeploymentCheck[]; readonly supabaseUrls: string[] }>

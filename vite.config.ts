@@ -1,10 +1,18 @@
 /// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { assertBuildEnv } from './scripts/check-build-env.mjs'
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => {
+  // Segunda barrera (la primera es el buildCommand de vercel.json): una preview nunca contra
+  // producción y ningún secreto en variables VITE_* (tampoco en ficheros .env locales).
+  if (command === 'build') assertBuildEnv({ ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env })
+  return config
+})
+
+const config = {
   plugins: [
     react(),
     tailwindcss(),
@@ -43,4 +51,4 @@ export default defineConfig({
     // IndexedDB en memoria para los tests de la capa de datos (se carga antes que Dexie).
     setupFiles: ['fake-indexeddb/auto'],
   },
-})
+}

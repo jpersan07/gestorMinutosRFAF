@@ -23,7 +23,8 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "env:local": "node scripts/write-env-local.mjs",
     "db:backup": "node scripts/backup-db.mjs",
-    "prod:config": "node scripts/production-config.mjs"
+    "prod:config": "node scripts/production-config.mjs",
+    "prod:csp": "node scripts/update-csp.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

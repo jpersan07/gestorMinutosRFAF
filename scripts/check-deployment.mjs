@@ -4,6 +4,8 @@
 //   npm run check:deploy -- https://<app>.vercel.app [--expect-supabase https://<ref>.supabase.co]
 //   npm run check:deploy -- http://localhost:4174 --expect-supabase http://127.0.0.1:54321
 //   npm run check:deploy -- http://localhost:4173 --no-headers      (p. ej. `vite preview`)
+//   npm run check:deploy -- https://<preview>.vercel.app --forbid-supabase https://<ref>.supabase.co
+//                                                    (una preview NO debe apuntar a producción)
 //
 // Sale con código 1 si alguna comprobación falla.
 import { fileURLToPath } from 'node:url'
@@ -30,7 +32,7 @@ const revalidates = (value) => /no-cache|no-store|max-age=0|must-revalidate/.tes
  * @param {{ requireHeaders?: boolean, expectSupabase?: string, fetch?: typeof fetch }} options
  */
 export async function checkDeployment(baseUrl, options = {}) {
-  const { requireHeaders = true, expectSupabase } = options
+  const { requireHeaders = true, expectSupabase, forbidSupabase = [] } = options
   const get = options.fetch ?? fetch
   const base = new URL(baseUrl)
   const at = (path) => new URL(path, base).toString()
@@ -87,11 +89,19 @@ export async function checkDeployment(baseUrl, options = {}) {
   }
   check('El código publicado no contiene claves secretas', !looksLikeSecret(bundle))
   const supabaseUrls = [...new Set(bundle.match(/https:\/\/[a-z0-9]{20}\.supabase\.co|http:\/\/(?:127\.0\.0\.1|localhost):54321/g) ?? [])]
+  for (const forbidden of forbidSupabase) {
+    check(`La app NO apunta a ${forbidden}`, !bundle.includes(forbidden.replace(/\/+$/, '')))
+  }
   if (expectSupabase) {
     check(`La app apunta a ${expectSupabase}`, supabaseUrls.includes(expectSupabase.replace(/\/+$/, '')), supabaseUrls.join(', ') || '(ninguna)')
   }
   if (!local) {
     check('No apunta a un Supabase local', !supabaseUrls.some((u) => u.startsWith('http://')), supabaseUrls.join(', '))
+    if (requireHeaders && expectSupabase) {
+      // En producción la CSP se restringe al proyecto real (npm run prod:csp): sin comodines.
+      const connect = home.headers.get('content-security-policy')?.match(/connect-src [^;]*/)?.[0] ?? ''
+      check(`CSP restringida a ${expectSupabase}`, connect.split(/\s+/).includes(expectSupabase.replace(/\/+$/, '')) && !connect.includes('*'), connect)
+    }
   }
 
   // 5. PWA: manifest (instalable) y service worker.
@@ -130,7 +140,7 @@ export async function checkDeployment(baseUrl, options = {}) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
-  const url = args.find((a) => /^https?:\/\//.test(a) && args[args.indexOf(a) - 1] !== '--expect-supabase')
+  const url = args.find((a, i) => /^https?:\/\//.test(a) && !['--expect-supabase', '--forbid-supabase'].includes(args[i - 1]))
   if (!url) {
     console.error('Uso: npm run check:deploy -- <url de la app> [--expect-supabase <url>] [--no-headers]')
     process.exit(2)
@@ -139,6 +149,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const result = await checkDeployment(url, {
     requireHeaders: !args.includes('--no-headers'),
     expectSupabase: expectIndex >= 0 ? args[expectIndex + 1] : undefined,
+    forbidSupabase: args.flatMap((a, i) => (args[i - 1] === '--forbid-supabase' ? [a] : [])),
   })
   for (const c of result.checks) console.log(`${c.ok ? '✓' : '✗'} ${c.name}${c.detail && !c.ok ? ` — ${c.detail}` : ''}`)
   console.log(result.ok ? `\nTodo correcto en ${url}` : `\nHay comprobaciones que fallan en ${url}`)

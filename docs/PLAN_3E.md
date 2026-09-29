@@ -1,6 +1,6 @@
 # Plan bloque 3e — Puesta en producción (Vercel + Supabase) y guía
 
-Estado: **3e.1 IMPLEMENTADO** (preparación en el repositorio, probada en local; ver §11). **3e.2 pendiente** (puesta en marcha real). Decisiones cerradas en §9.
+Estado: **3e.1 IMPLEMENTADO** (`2df0a05`, §11). **Camino de 3e.2 preparado y revisado** (§12). La puesta en marcha real sigue pendiente de autorización. Decisiones cerradas en §9.
 
 Objetivo: que los entrenadores usen la app de verdad, en sus móviles, **instalada como PWA con HTTPS**, contra un Supabase en la nube. Todo lo de 3a–3d (seguridad, offline, TOMAR CONTROL) debe funcionar igual que en local. Además, debe quedar una **guía** para ponerla en marcha y administrarla sin depender de mí.
 
@@ -168,12 +168,14 @@ Todas las plantillas llevan comentarios y se prueban contra el Supabase local en
 
 | # | Decisión |
 |---|---|
-| D-E1 | SMTP externo: **Brevo** si se empieza sin dominio, **Resend** si hay dominio propio. En 3e.1 solo documentación y configuración con variables de entorno, sin credenciales |
-| D-E2 | Para empezar, URL `*.vercel.app`; un dominio propio se añade después sin cambios en la app |
+| D-E1 | SMTP: **Brevo** (no hay dominio propio). Credenciales solo en la terminal y en Supabase; nunca en el repositorio. Limitaciones de un remitente sin dominio, documentadas (Paso 5) |
+| D-E2 | URL `*.vercel.app` (sin dominio propio); se podrá añadir un dominio después sin cambiar la arquitectura (guía, E8) |
 | D-E3 | Comprobación automática de la URL publicada sin sesión ni escrituras + lista en móviles reales con un equipo de pruebas, que se hará en 3e.2 |
 | D-E4 | Administración con plantillas SQL en el panel de Supabase; el entrenador pone su propia contraseña. Sin administración dentro de la PWA ni claves secretas |
 | D-E5 | Región de la UE adecuada para España, elegida entre las que ofrezca Supabase al crear el proyecto (no se fija una concreta) |
-| D-E6 | Previews preparadas, pero **nunca** contra producción: el build lo impide (`check-build-env.mjs` + `deploy/production.json`). Para previews completas, un proyecto de *staging* |
+| D-E6 | Previews **habilitadas** y aisladas: nunca leen ni escriben en producción. Sin staging, muestran "Falta configuración"; con staging (opcional, `deploy/staging.json`), solo ese proyecto. El build falla ante cualquier combinación peligrosa |
+| D-E10 | El *project ref* y la URL pública de Supabase no son secretos y se versionan (`deploy/production.json`, `supabase/config.toml`) |
+| D-E11 | La CSP de producción se restringe al proyecto real en cuanto exista (`npm run prod:csp`) y se repiten los E2E "como producción" |
 | D-E7 | CI en GitHub Actions: typecheck, lint, unitarios y build en cada push a `main` y en cada PR, sin secretos |
 | D-E8 | Script de copia manual (`npm run db:backup`), siempre fuera del repositorio, con procedimiento de restauración documentado |
 | D-E9 | **Sí**: el servidor rechaza eventos con hora futura (§11) |
@@ -223,3 +225,41 @@ Todas las plantillas llevan comentarios y se prueban contra el Supabase local en
 7. primer equipo y entrenadores con las plantillas;
 8. lista de la Parte D en móviles reales;
 9. primera copia de seguridad.
+
+## 12. Camino de 3e.2 preparado (sin tocar servicios remotos)
+
+**Orden exacto** (`docs/GUIA_PUESTA_EN_MARCHA.md`, Parte C):
+1. Supabase de producción;
+2. repositorio + `db push --dry-run`;
+3. migraciones + `00_comprobar_instalacion.sql`;
+4. Auth;
+5. Brevo SMTP;
+6. correo de recuperación;
+7. Vercel;
+8. variables de Production;
+9. variables de Preview aisladas;
+10. primer despliegue;
+11. `check:deploy`;
+12. equipo `PRUEBAS…`;
+13. entrenadores de prueba;
+14. dos móviles;
+15. borrar las pruebas (`09_…`);
+16. equipo real;
+17. entrenadores reales (cada uno pone su contraseña);
+18. primera copia.
+
+**Añadido para ese camino:**
+- **`check-build-env`** (en `vercel.json` y, además, dentro de Vite):
+  - ningún secreto en cualquier `VITE_*`, por valor o por nombre;
+  - las previews solo pueden usar el staging declarado, o nada;
+  - producción debe estar completa (`supabaseUrl`, `appUrl` y la URL de producción de Vercel coherente).
+- **`deploy/staging.json`** (opcional) y **`npm run prod:csp`**: `connect-src` exacto a partir de `deploy/*.json`. Un test comprueba que `vercel.json` siempre es coherente con ellos.
+- **`npm run check:deploy`**:
+  - `--expect-supabase` en una URL real exige la CSP sin comodín;
+  - `--forbid-supabase` comprueba que una preview no apunta a producción.
+- **`npm run prod:config`**:
+  - `--without-smtp` (Paso 4) y `--replace` (Paso 5);
+  - `--remote staging --preview-redirect` (staging opcional).
+- **Nuevas plantillas SQL:**
+  - `00_comprobar_instalacion.sql`, verificado sobre una instalación simulada sin seed: 13/13 correcto, 0 equipos, 0 cuentas, nada DEMO;
+  - `09_borrar_equipo_de_pruebas.sql`: solo equipos `PRUEBAS…`, desactiva y reactiva el trigger del historial en una sola transacción.

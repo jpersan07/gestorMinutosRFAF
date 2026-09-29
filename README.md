@@ -32,6 +32,7 @@ Requiere Docker (Docker Desktop).
 | `npm run check:deploy -- <url>` | Comprueba una URL publicada (solo lectura) |
 | `npm run serve:dist` | Sirve `dist` como Vercel (rutas y cabeceras) |
 | `npm run prod:config -- --project-ref <ref> --app-url <url>` | Añade la configuración de Auth de producción a `supabase/config.toml` |
+| `npm run prod:csp` | Restringe la CSP (`connect-src`) al Supabase de `deploy/production.json` (y staging) |
 | `npm run db:backup -- --linked` | Copia de la base de datos de producción fuera del repositorio |
 | `npm run generate-pwa-assets` | Regenera los iconos PWA desde `public/icon.svg` |
 
@@ -50,11 +51,15 @@ Guía paso a paso (Supabase, Vercel, correo, administración, copias y problemas
   - `VITE_SUPABASE_URL`;
   - `VITE_SUPABASE_PUBLISHABLE_KEY`, **solo la clave publicable**.
 
-  El build (`scripts/check-build-env.mjs`) falla si se cuela una clave secreta, si producción no apunta al Supabase declarado en `deploy/production.json` o si una *preview* apunta a producción.
+  El build (`scripts/check-build-env.mjs`, en `vercel.json` y dentro de Vite) falla si:
+  - hay un secreto en cualquier variable `VITE_*`;
+  - producción no apunta exactamente al Supabase de `deploy/production.json`, o su configuración está incompleta;
+  - una *preview* apunta a producción o a algo que no sea el staging de `deploy/staging.json`.
 - **Supabase**:
   - `npx supabase db push` aplica `supabase/migrations`, nunca el seed DEMO;
   - `npm run prod:config` genera la configuración de Auth de producción (`[remotes.production]`) para `supabase config diff` / `config push`;
   - administración con las plantillas de `supabase/admin/`.
+- **CSP**: cuando exista el proyecto de producción, `npm run prod:csp` restringe `connect-src` a ese origen (hasta entonces, `https://*.supabase.co`).
 - **Vercel**: `vercel.json` define:
   - rutas de la SPA;
   - caché (recursos con hash inmutables; HTML, service worker y manifest se revalidan);

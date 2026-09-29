@@ -1,0 +1,4 @@
+{
+  "$comment": "Proyecto Supabase de STAGING (opcional) para las previews de Vercel. Datos PÚBLICOS. Si es null, las previews no usan Supabase (muestran \"Falta configuración\"). Nunca puede ser el de producción (lo comprueba scripts/check-build-env.mjs).",
+  "supabaseUrl": null
+}

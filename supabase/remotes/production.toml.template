@@ -1,11 +1,15 @@
 # =============================================================================
-# Configuración de PRODUCCIÓN para `supabase config push` (se añade a supabase/config.toml).
+# Configuración de PRODUCCIÓN (o de STAGING) para `supabase config push` (se añade a
+# supabase/config.toml como [remotes.production] / [remotes.staging]).
 #
 # No se deja en config.toml hasta 3e.2 porque la CLI exige el project ref real en
-# [remotes.production] (y sin él no funcionaría ni el Supabase local). El project ref y la URL
+# [remotes.<nombre>] (y sin él no funcionaría ni el Supabase local). El project ref y la URL
 # de la app NO son secretos. Para generarlo y añadirlo:
 #
-#   node scripts/production-config.mjs --project-ref <ref> --app-url https://<app>.vercel.app
+#   npm run prod:config -- --project-ref <ref> --app-url https://<app>.vercel.app
+#   npm run prod:config -- --remote staging --project-ref <ref de staging> --app-url https://<app>.vercel.app \
+#     --preview-redirect 'https://<proyecto>-*.vercel.app/**'
+#                                              (opcional: proyecto de staging para las previews)
 #
 # Los datos del SMTP NO se escriben aquí: se leen de variables de entorno al ejecutar
 # `supabase config diff` / `supabase config push` (ver docs/GUIA_PUESTA_EN_MARCHA.md, Parte B).
@@ -13,22 +17,22 @@
 # acceso por email, contraseña de 8 caracteres como mínimo, plantilla del correo de recuperación).
 # =============================================================================
 
-[remotes.production]
+[remotes.__REMOTE__]
 project_id = "__PROJECT_REF__"
 
 # Los datos DEMO (seed.sql) son SOLO para desarrollo local: nunca en producción.
-[remotes.production.db.seed]
+[remotes.__REMOTE__.db.seed]
 enabled = false
 
-[remotes.production.auth]
+[remotes.__REMOTE__.auth]
 site_url = "__APP_URL__"
 additional_redirect_urls = ["__APP_URL__/**"]
 
-[remotes.production.auth.rate_limit]
+[remotes.__REMOTE__.auth.rate_limit]
 # Correos por hora (recuperación de contraseña) con el SMTP propio.
 email_sent = 30
 
-[remotes.production.auth.email.smtp]
+[remotes.__REMOTE__.auth.email.smtp]
 enabled = true
 host = "env(SUPABASE_AUTH_SMTP_HOST)"
 port = 587

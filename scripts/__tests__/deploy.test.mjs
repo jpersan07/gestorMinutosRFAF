@@ -2,9 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { checkBuildEnv, isSecretKey } from '../check-build-env.mjs'
+import { checkBuildEnv, isSecretKey, readDeployConfig } from '../check-build-env.mjs'
 import { checkDeployment } from '../check-deployment.mjs'
 import { createDistServer, headersFor, loadVercelConfig, sourceToRegExp } from '../serve-dist.mjs'
+import { connectSources, expectedVercelConfig } from '../update-csp.mjs'
 
 const config = loadVercelConfig()
 // Claves FALSAS construidas por partes (así ningún escáner de secretos las confunde con reales).
@@ -63,8 +64,11 @@ describe('vercel.json', () => {
 })
 
 describe('variables de entorno del build (producción / preview / local)', () => {
-  const production = { supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co' }
+  const production = { supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co', appUrl: 'https://gestor-minutos.vercel.app' }
+  const staging = { supabaseUrl: 'https://zyxwvutsrqponmlkjihg.supabase.co' }
+  const noStaging = { supabaseUrl: null }
   const publishable = 'sb_publishable_0123456789abcdefghij'
+  const prodVars = { VITE_SUPABASE_URL: production.supabaseUrl, VITE_SUPABASE_PUBLISHABLE_KEY: publishable }
 
   it('detecta claves secretas', () => {
     expect(isSecretKey(FAKE_SECRET)).toBe(true)
@@ -73,29 +77,81 @@ describe('variables de entorno del build (producción / preview / local)', () =>
     expect(isSecretKey(publishable)).toBe(false)
   })
 
-  it('local / CI: no exige nada, pero nunca una clave secreta', () => {
+  it('en CUALQUIER entorno, ningún secreto en variables VITE_* (van dentro de la app)', () => {
     expect(checkBuildEnv({}, production)).toEqual([])
     expect(checkBuildEnv({ VITE_SUPABASE_PUBLISHABLE_KEY: FAKE_SECRET }, production)).toHaveLength(1)
+    expect(checkBuildEnv({ VITE_OTRA: jwt({ role: 'service_role' }) }, production)).toHaveLength(1)
+    for (const name of ['VITE_SUPABASE_SECRET_KEY', 'VITE_SERVICE_ROLE_KEY', 'VITE_SMTP_PASS', 'VITE_SMTP_USER', 'VITE_DB_PASSWORD', 'VITE_ACCESS_TOKEN']) {
+      expect(checkBuildEnv({ [name]: 'valor' }, production), name).toHaveLength(1)
+    }
+    // Las variables que no son VITE_* no llegan a la app: no se tocan (p. ej. las de la CLI).
+    expect(checkBuildEnv({ SUPABASE_AUTH_SMTP_PASS: 'x', SUPABASE_DB_PASSWORD: 'x' }, production)).toEqual([])
   })
 
-  it('producción: exige el Supabase de producción declarado', () => {
+  it('Production: exactamente el Supabase de producción y la configuración completa', () => {
     const vercel = { VERCEL: '1', VERCEL_ENV: 'production' }
-    expect(checkBuildEnv({ ...vercel, VITE_SUPABASE_URL: production.supabaseUrl, VITE_SUPABASE_PUBLISHABLE_KEY: publishable }, production)).toEqual([])
+    expect(checkBuildEnv({ ...vercel, ...prodVars }, production, staging)).toEqual([])
+    expect(checkBuildEnv({ ...vercel, ...prodVars, VERCEL_PROJECT_PRODUCTION_URL: 'gestor-minutos.vercel.app' }, production)).toEqual([])
     expect(checkBuildEnv(vercel, production).length).toBeGreaterThan(0)
-    expect(
-      checkBuildEnv({ ...vercel, VITE_SUPABASE_URL: 'https://staging0000000000000.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: publishable }, production),
-    ).toHaveLength(1)
-    expect(checkBuildEnv({ ...vercel, VITE_SUPABASE_URL: production.supabaseUrl, VITE_SUPABASE_PUBLISHABLE_KEY: publishable }, { supabaseUrl: null })).toHaveLength(1)
+    expect(checkBuildEnv({ ...vercel, ...prodVars, VITE_SUPABASE_URL: staging.supabaseUrl }, production, staging)).toHaveLength(1)
+    expect(checkBuildEnv({ ...vercel, ...prodVars }, { supabaseUrl: null, appUrl: production.appUrl })).toHaveLength(1)
+    expect(checkBuildEnv({ ...vercel, ...prodVars }, { supabaseUrl: production.supabaseUrl, appUrl: null })).toHaveLength(1)
+    // Un dominio nuevo en Vercel obliga a actualizar appUrl (y las URLs de Auth de Supabase).
+    expect(checkBuildEnv({ ...vercel, ...prodVars, VERCEL_PROJECT_PRODUCTION_URL: 'minutos.ejemplo.es' }, production)).toHaveLength(1)
   })
 
-  it('preview: NUNCA contra producción; sin variables o con staging, sí', () => {
-    const preview = { VERCEL: '1', VERCEL_ENV: 'preview' }
-    expect(checkBuildEnv(preview, production)).toEqual([])
-    expect(checkBuildEnv({ ...preview, VITE_SUPABASE_URL: 'https://staging0000000000000.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: publishable }, production)).toEqual([])
-    const toProduction = { ...preview, VITE_SUPABASE_URL: `${production.supabaseUrl}/`, VITE_SUPABASE_PUBLISHABLE_KEY: publishable }
-    expect(checkBuildEnv(toProduction, production)).toEqual([expect.stringContaining('NO puede usar el Supabase de producción')])
-    // Sin producción declarada no se puede comprobar: se rechaza por prudencia.
-    expect(checkBuildEnv(toProduction, { supabaseUrl: null })).toHaveLength(1)
+  it('Preview: NUNCA producción; solo sin Supabase o con el staging declarado', () => {
+    for (const VERCEL_ENV of ['preview', 'development']) {
+      const preview = { VERCEL: '1', VERCEL_ENV }
+      expect(checkBuildEnv(preview, production, noStaging)).toEqual([])
+      expect(checkBuildEnv({ ...preview, VITE_SUPABASE_URL: staging.supabaseUrl, VITE_SUPABASE_PUBLISHABLE_KEY: publishable }, production, staging)).toEqual([])
+      const toProduction = { ...preview, ...prodVars, VITE_SUPABASE_URL: `${production.supabaseUrl}/` }
+      expect(checkBuildEnv(toProduction, production, staging)).toEqual([expect.stringContaining('NUNCA puede usar el Supabase de producción')])
+      // Una URL cualquiera (ni staging declarado ni producción): tampoco.
+      expect(checkBuildEnv({ ...preview, ...prodVars, VITE_SUPABASE_URL: 'https://otroproyectoxxxxxxxxx.supabase.co' }, production, staging)).toHaveLength(1)
+      expect(checkBuildEnv({ ...preview, ...prodVars, VITE_SUPABASE_URL: staging.supabaseUrl }, production, noStaging)).toHaveLength(1)
+      // Sin producción declarada no se puede comprobar: se rechaza por prudencia.
+      expect(checkBuildEnv({ ...preview, VITE_SUPABASE_URL: staging.supabaseUrl }, { supabaseUrl: null }, staging)).toHaveLength(1)
+    }
+    // Staging nunca puede ser el mismo proyecto que producción.
+    expect(checkBuildEnv({ VERCEL: '1', VERCEL_ENV: 'preview' }, production, { supabaseUrl: production.supabaseUrl })).toHaveLength(1)
+  })
+
+  it('los ficheros deploy/*.json del repositorio son válidos y el build local pasa', () => {
+    const { production: p, staging: s } = readDeployConfig()
+    expect(Object.keys(p).sort()).toEqual(['$comment', 'appUrl', 'supabaseUrl'])
+    expect(Object.keys(s).sort()).toEqual(['$comment', 'supabaseUrl'])
+    expect(checkBuildEnv({}, p, s)).toEqual([])
+  })
+})
+
+describe('CSP: connect-src se restringe al Supabase real cuando existe (npm run prod:csp)', () => {
+  it('vercel.json es coherente con deploy/production.json y deploy/staging.json', () => {
+    expect(expectedVercelConfig()).toEqual(config)
+  })
+
+  it('sin producción declarada, comodín; con producción (y staging), solo esos orígenes', () => {
+    expect(connectSources({ supabaseUrl: null })).toEqual(["'self'", 'https://*.supabase.co'])
+    expect(connectSources({ supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co' })).toEqual(["'self'", 'https://abcdefghijklmnopqrst.supabase.co'])
+    expect(
+      connectSources({ supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co/' }, { supabaseUrl: 'https://zyxwvutsrqponmlkjihg.supabase.co' }),
+    ).toEqual(["'self'", 'https://abcdefghijklmnopqrst.supabase.co', 'https://zyxwvutsrqponmlkjihg.supabase.co'])
+    expect(() => connectSources({ supabaseUrl: 'http://127.0.0.1:54321' })).toThrow()
+    const exact = expectedVercelConfig(config, { supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co' }, { supabaseUrl: null })
+    const csp = exact.headers[0].headers.find((h) => h.key === 'Content-Security-Policy').value
+    expect(csp).toContain("connect-src 'self' https://abcdefghijklmnopqrst.supabase.co;")
+    expect(csp).not.toContain('*')
+    // El resto de la CSP no cambia.
+    expect(csp.replace(/connect-src [^;]*/, '')).toBe(headersFor(config, '/')['Content-Security-Policy'].replace(/connect-src [^;]*/, ''))
+  })
+
+  it('el servidor local sustituye el Supabase de la CSP (comodín u origen exacto) por el local', () => {
+    const exact = expectedVercelConfig(config, { supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co' }, { supabaseUrl: null })
+    for (const c of [config, exact]) {
+      expect(headersFor(c, '/', { supabaseOrigin: 'http://127.0.0.1:54321' })['Content-Security-Policy']).toContain(
+        "connect-src 'self' http://127.0.0.1:54321;",
+      )
+    }
   })
 })
 
@@ -146,6 +202,25 @@ describe('comprobación de una URL publicada', () => {
     expect(strict.ok).toBe(false)
     expect(strict.checks.filter((c) => !c.ok).map((c) => c.name)).toContain('X-Content-Type-Options: nosniff')
     expect((await checkDeployment(url, { requireHeaders: false })).ok).toBe(true)
+  })
+
+  it('URL real con --expect-supabase: exige la CSP restringida a ese proyecto (sin comodín)', async () => {
+    const wildcard = await serve({})
+    const exact = await serve({ config: expectedVercelConfig(config, { supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co' }, { supabaseUrl: null }) })
+    // Simula una URL pública (https) redirigiendo las peticiones al servidor local.
+    const as = (local) => (url, init) => fetch(String(url).replace(/^https?:\/\/app\.ejemplo\.es/, local), init)
+    const strict = (result) => result.checks.find((c) => c.name === 'CSP restringida a https://abcdefghijklmnopqrst.supabase.co')
+    const options = { expectSupabase: 'https://abcdefghijklmnopqrst.supabase.co' }
+    expect(strict(await checkDeployment('https://app.ejemplo.es', { ...options, fetch: as(wildcard) }))?.ok).toBe(false)
+    expect(strict(await checkDeployment('https://app.ejemplo.es', { ...options, fetch: as(exact) }))?.ok).toBe(true)
+  })
+
+  it('--forbid-supabase: comprueba que una preview NO apunta al Supabase de producción', async () => {
+    const url = await serve({})
+    const ok = await checkDeployment(url, { forbidSupabase: ['https://otroproyectoxxxxxxxxx.supabase.co'] })
+    expect(ok.checks.find((c) => c.name.startsWith('La app NO apunta'))?.ok).toBe(true)
+    const bad = await checkDeployment(url, { forbidSupabase: ['https://abcdefghijklmnopqrst.supabase.co/'] })
+    expect(bad.checks.find((c) => c.name.startsWith('La app NO apunta'))?.ok).toBe(false)
   })
 
   it('una clave secreta en el código publicado o un Supabase inesperado: falla', async () => {

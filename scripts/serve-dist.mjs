@@ -4,8 +4,8 @@
 //
 //   node scripts/serve-dist.mjs --port 4174 [--supabase-origin http://127.0.0.1:54321] [--csp-reports]
 //
-// --supabase-origin sustituye `https://*.supabase.co` en la CSP por el Supabase local: es la única
-// diferencia con la cabecera de producción. Solo lee ficheros: no escribe nada en ningún sitio.
+// --supabase-origin sustituye los Supabase de `connect-src` en la CSP (`https://*.supabase.co` o el
+// origen exacto de producción) por el Supabase local: es la única diferencia con producción. Solo lee ficheros: no escribe nada en ningún sitio.
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { extname, join, normalize, resolve } from 'node:path'
@@ -53,7 +53,7 @@ export function headersFor(config, pathname, options = {}) {
     for (const { key, value } of rule.headers) {
       headers[key] =
         key === 'Content-Security-Policy' && options.supabaseOrigin
-          ? value.replaceAll('https://*.supabase.co', options.supabaseOrigin)
+          ? value.replace(/connect-src [^;]*/, `connect-src 'self' ${options.supabaseOrigin}`)
           : value
     }
   }

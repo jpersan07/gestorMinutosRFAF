@@ -3,7 +3,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { loadMemberships } from '../../src/data'
-import { createUser, env, must, serviceClient } from './helpers'
+import { MatchHarness, lineupOf } from '../../src/domain/__tests__/harness'
+import { append, createPlayers, createUser, env, expectError, matchScenario, must, serviceClient } from './helpers'
 
 // Plantillas SQL de administración (supabase/admin), ejecutadas como en el SQL Editor del panel
 // (usuario postgres) contra el Supabase LOCAL, con los marcadores sustituidos por datos de prueba.
@@ -30,7 +31,7 @@ describe('plantillas de administración', () => {
   it('no contienen datos reales: solo marcadores < > (y ningún secreto)', () => {
     for (const file of readdirSync(ADMIN).filter((f) => f.endsWith('.sql'))) {
       const sql = readFileSync(`${ADMIN}/${file}`, 'utf8')
-      expect(sql, file).not.toMatch(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}/) // emails
+      expect(sql, file).not.toMatch(/[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}/) // emails (los patrones '%@…' de las consultas no lo son)
       expect(sql, file).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/) // UUID
       expect(sql, file).not.toMatch(/service_role|sb_secret_|eyJ[A-Za-z0-9_-]{10,}/)
     }
@@ -86,5 +87,77 @@ describe('plantillas de administración', () => {
     expect(await loadMemberships(coach.client, coach.id)).toEqual([])
     expect(() => remove(admin.email)).toThrow(/último administrador/)
     expect(() => remove(coach.email)).toThrow(/no pertenece/)
+  })
+
+  it('00 · comprobación de la instalación: seguridad correcta (en local hay datos, así que "vacía" no)', () => {
+    const output = runSql('00_comprobar_instalacion.sql')
+    const rows = output
+      .split('\n')
+      .map((line) => line.split('|').map((cell) => cell.trim()))
+      .filter((cells) => cells.length === 3 && (cells[1] === 't' || cells[1] === 'f'))
+    const byName = new Map(rows.map(([name, ok]) => [name, ok]))
+    for (const name of [
+      'RLS activo en todas las tablas de public',
+      'RLS activo en las tablas internas (private)',
+      'append_match_events: solo usuarios con sesión',
+      'take_match_control: solo usuarios con sesión',
+      'server_time: solo usuarios con sesión',
+      'set_event_time_policy: solo la clave de servicio',
+      'La validación interna de eventos no es accesible desde la API',
+      'Historial de eventos inmutable (triggers)',
+      'Tolerancia de horas futuras de producción (60 s)',
+      'Bucket de escudos privado',
+    ]) {
+      expect(byName.get(name), name).toBe('t')
+    }
+    expect(byName.has('Sin equipos (instalación vacía)')).toBe(true)
+    expect(byName.has('Ningún dato DEMO')).toBe(true)
+  })
+
+  it('09 · borrar el equipo de PRUEBAS con sus partidos y eventos; nunca un equipo real', async () => {
+    const teamName = `PRUEBAS puesta en marcha ${randomUUID().slice(0, 8)}`
+    runSql('01_crear_equipo_y_temporada.sql', { '<NOMBRE_DEL_EQUIPO>': teamName, '<TEMPORADA_AAAA-AA>': '2026-27' })
+    const team = await teamByName(teamName)
+    const coach = await createUser('Prueba')
+    runSql('04_anadir_entrenador_al_equipo.sql', {
+      '<EMAIL_DEL_ENTRENADOR>': coach.email,
+      '<ID_DEL_EQUIPO>': team.id,
+      '<coach o admin>': 'admin',
+      '<NOMBRE_VISIBLE>': 'Entrenador de prueba',
+    })
+    // Un partido jugado de verdad (eventos en el servidor).
+    const players = await createPlayers(coach, team.id, 14)
+    const matchId = randomUUID()
+    must(await coach.client.from('matches').insert({ id: matchId, team_id: team.id, season_id: team.current_season_id!, opponent: 'Rival' }))
+    must(await coach.client.from('match_squads').insert({ match_id: matchId, team_id: team.id, player_ids: players }))
+    const device = new MatchHarness(matchId, randomUUID)
+    device.squad = players
+    device.deviceId = 'movil-de-pruebas'
+    device.now = Date.now() - 30 * 60_000
+    device.kickOff(lineupOf('4-3-3', players.slice(0, 11)))
+    expect((await append(coach, matchId, device.events)).rejected).toBeNull()
+
+    // Un equipo real (sin "PRUEBAS") no se puede borrar con este script.
+    const realName = `Equipo real ${randomUUID().slice(0, 8)}`
+    runSql('01_crear_equipo_y_temporada.sql', { '<NOMBRE_DEL_EQUIPO>': realName, '<TEMPORADA_AAAA-AA>': '2026-27' })
+    const real = await teamByName(realName)
+    expect(() => runSql('09_borrar_equipo_de_pruebas.sql', { '<ID_DEL_EQUIPO_DE_PRUEBAS>': real.id })).toThrow(/no es de pruebas/)
+    expect(() => runSql('09_borrar_equipo_de_pruebas.sql')).toThrow(/Sustituye/)
+
+    const output = runSql('09_borrar_equipo_de_pruebas.sql', { '<ID_DEL_EQUIPO_DE_PRUEBAS>': team.id })
+    expect(output).toMatch(/historial_protegido\s*-+\s*t/)
+    const admin = serviceClient()
+    expect(must(await admin.from('teams').select('id').eq('id', team.id)).data).toEqual([])
+    expect(must(await admin.from('match_events').select('id').eq('match_id', matchId)).data).toEqual([])
+    expect(must(await admin.from('players').select('id').eq('team_id', team.id)).data).toEqual([])
+    // Ya sin eventos, la cuenta de prueba se puede borrar (como en el panel).
+    expect((await admin.auth.admin.deleteUser(coach.id)).error).toBeNull()
+    // El historial sigue protegido para todos los demás equipos (un partido con eventos reales).
+    const other = await matchScenario()
+    other.device.now = Date.now() - 30 * 60_000
+    other.device.kickOff(other.lineup)
+    await other.sync()
+    expectError(await admin.from('match_events').delete().eq('match_id', other.matchId), 'MATCH_EVENTS_ARE_IMMUTABLE')
+    expect(must(await admin.from('match_events').select('id').eq('match_id', other.matchId)).data).toHaveLength(other.device.events.length)
   })
 })

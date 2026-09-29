@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { backup, insideRepository } from '../../scripts/backup-db.mjs'
-import { renderProductionConfig } from '../../scripts/production-config.mjs'
+import { removeGeneratedBlock, renderProductionConfig } from '../../scripts/production-config.mjs'
 
 // Preparación de producción que se puede comprobar SIN tocar ningún proyecto remoto.
 
@@ -19,6 +19,34 @@ describe('configuración de producción de Supabase ([remotes.production])', () 
     expect(block).not.toMatch(/127\.0\.0\.1|localhost|demo/i)
     // El SMTP se lee de variables de entorno: ningún secreto en el fichero.
     expect(block).toContain('pass = "env(SUPABASE_AUTH_SMTP_PASS)"')
+  })
+
+  it('Paso 4 sin SMTP y Paso 5 con SMTP: el bloque se regenera sin duplicarse (--replace)', () => {
+    const withoutSmtp = renderProductionConfig({ projectRef: 'abcdefghijklmnopqrst', appUrl: 'https://gestor-ejemplo.vercel.app', smtp: false })
+    expect(withoutSmtp).not.toMatch(/smtp|rate_limit/)
+    expect(withoutSmtp).toContain('site_url = "https://gestor-ejemplo.vercel.app"')
+    const marker = '# production (generado con scripts/production-config.mjs)'
+    const base = '[auth]\nsite_url = "http://127.0.0.1:5173"\n'
+    const step4 = `${base}\n${marker}\n${withoutSmtp}`
+    const step5 = `${removeGeneratedBlock(step4, 'production').trimEnd()}\n\n${marker}\n${block}`
+    expect(step5.match(/\[remotes\.production\]/g)).toHaveLength(1)
+    expect(step5).toContain('[remotes.production.auth.email.smtp]')
+    expect(step5.startsWith(base)).toBe(true)
+  })
+
+  it('staging (opcional, para previews): su propio bloque, sin seed, con el patrón de las URLs de preview', () => {
+    const staging = renderProductionConfig({
+      remote: 'staging',
+      projectRef: 'zyxwvutsrqponmlkjihg',
+      appUrl: 'https://gestor-ejemplo.vercel.app',
+      previewRedirect: 'https://gestor-ejemplo-*.vercel.app/**',
+    })
+    expect(staging).toContain('[remotes.staging]')
+    expect(staging).not.toContain('remotes.production')
+    expect(staging).toMatch(/\[remotes\.staging\.db\.seed\]\s+enabled = false/)
+    expect(staging).toContain('additional_redirect_urls = ["https://gestor-ejemplo.vercel.app/**", "https://gestor-ejemplo-*.vercel.app/**"]')
+    // En producción nunca hay comodines de preview.
+    expect(() => renderProductionConfig({ projectRef: 'abcdefghijklmnopqrst', appUrl: 'https://x.vercel.app', previewRedirect: 'https://x-*.vercel.app/**' })).toThrow()
   })
 
   it('rechaza datos que no son de producción', () => {
