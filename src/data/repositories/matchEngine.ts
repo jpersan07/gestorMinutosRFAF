@@ -47,6 +47,9 @@ async function runStep(
 ): Promise<DataResult<MatchState>> {
   const match = await db.matches.get(matchId)
   if (!match) return failResult({ code: 'NOT_FOUND' })
+  // Otro dispositivo tomó el control (el servidor rechazó los eventos de este): no se escribe
+  // nada más en este partido, ni por comandos ni por el final automático de las partes.
+  if (match.controlLostAt) return failResult({ code: 'CONTROL_LOST' })
 
   const stored = await listMatchEvents(db, matchId)
   const state = replay(matchId, stored)
@@ -86,7 +89,9 @@ function matchRecordFor(
     managedBy: tookControl ? actor.coachId : match.managedBy,
     savedAt: saved ? saved.occurredAt : match.savedAt,
     updatedAt: now,
-    syncState: 'pending',
+    // La fila del partido solo sube los DATOS editables (rival, fecha…): los eventos no la dejan
+    // pendiente. El estado del partido lo deriva el servidor de los eventos.
+    syncState: match.syncState,
   }
 }
 
@@ -147,7 +152,7 @@ export async function findActiveMatchId(db: AppDatabase, deviceId: string): Prom
   const active = await db.matches
     .where('status')
     .anyOf('first_half', 'halftime', 'second_half')
-    .filter((m) => m.controllerDeviceId === deviceId)
+    .filter((m) => m.controllerDeviceId === deviceId && !m.controlLostAt)
     .first()
   return active?.id ?? null
 }

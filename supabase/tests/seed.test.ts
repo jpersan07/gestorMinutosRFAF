@@ -18,7 +18,10 @@ describe('seed de desarrollo local', () => {
     expect(teams.data?.[0]?.current_season_id).toBeTruthy()
     const membership = must(await client.from('team_members').select('role').eq('user_id', data.user!.id).single())
     expect(membership.data?.role).toBe('admin')
-    const members = must(await client.from('profiles').select('display_name'))
-    expect(members.data?.map((m) => m.display_name).sort()).toEqual(['ISAAC DEMO', 'JORDI DEMO', 'JOSÉ DEMO'])
+    const members = (must(await client.from('profiles').select('display_name')).data ?? []).map((m) => m.display_name)
+    // Los entrenadores del seed están; nunca se ve a nadie del otro equipo DEMO.
+    // (Otros tests pueden añadir cuentas al equipo DEMO en la misma base de datos local.)
+    expect(members).toEqual(expect.arrayContaining(['ISAAC DEMO', 'JORDI DEMO', 'JOSÉ DEMO']))
+    expect(members).not.toContain('OTRO DEMO')
   })
 })

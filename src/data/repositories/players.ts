@@ -36,6 +36,7 @@ export async function createPlayer(
       createdAt: now,
       updatedAt: now,
       syncState: 'pending',
+      syncIssue: null,
     }
     await db.players.add(player)
     return okResult(player)
@@ -60,7 +61,9 @@ export async function updatePlayer(
       number: input.number,
       active: input.active,
       updatedAt: env.now(),
+      // Editar resuelve un conflicto anterior (p. ej. dorsal): se vuelve a intentar subir.
       syncState: 'pending',
+      syncIssue: null,
     }
     await db.players.put(player)
     return okResult(player)

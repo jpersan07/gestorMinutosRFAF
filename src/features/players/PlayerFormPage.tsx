@@ -6,6 +6,7 @@ import { fieldErrors } from '../../app/messages'
 import { useAction } from '../../app/useAction'
 import { createPlayer, updatePlayer, type DataError, type PlayerRecord } from '../../data'
 import { Button } from '../../ui/Button'
+import { numberTakenMessage } from './conflicts'
 import { Page } from '../../ui/Page'
 import { TextField } from '../../ui/TextField'
 
@@ -34,6 +35,11 @@ function PlayerForm({ player }: { player: PlayerRecord | null }) {
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+      {player?.syncState === 'conflict' && player.syncIssue === 'NUMBER_TAKEN' && (
+        <p role="alert" className="rounded-xl bg-warn p-4 font-bold text-accent-ink">
+          {numberTakenMessage(player)}
+        </p>
+      )}
       <TextField
         label="Nombre"
         value={name}

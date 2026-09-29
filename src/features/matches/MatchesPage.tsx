@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router'
-import { useAuth } from '../../app/auth/AuthContext'
 import { useApp, useCoachId } from '../../app/context'
 import { useAction } from '../../app/useAction'
 import { useCrest } from '../../app/useCrest'
 import { listMatches, type MatchRecord } from '../../data'
 import { loadDemoData } from '../../data/demo'
 import { Button } from '../../ui/Button'
-import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { Crest } from '../../ui/Crest'
 import { Page } from '../../ui/Page'
 import { StatusBadge } from '../../ui/StatusBadge'
+import { SyncIndicator } from '../../app/sync/SyncIndicator'
 import { matchDetailsLine } from './matchDetails'
+import { SignOutDialog } from './SignOutDialog'
 
 function MatchCard({ match }: { match: MatchRecord }) {
   const crest = useCrest(match.crestId)
@@ -26,8 +26,11 @@ function MatchCard({ match }: { match: MatchRecord }) {
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="truncate text-lg font-black uppercase">{match.opponent}</span>
           <span className="truncate text-sm text-muted">{matchDetailsLine(match)}</span>
-          <span>
+          <span className="flex flex-wrap items-center gap-2">
             <StatusBadge status={match.status} />
+            {match.controlLostAt && (
+              <span className="text-xs font-black text-warn">Controlado por otro dispositivo</span>
+            )}
           </span>
         </span>
         <span className="text-sm font-bold text-accent">ENTRAR →</span>
@@ -38,7 +41,6 @@ function MatchCard({ match }: { match: MatchRecord }) {
 
 export function MatchesPage() {
   const { db, env, scope } = useApp()
-  const { signOut } = useAuth()
   const coachId = useCoachId()
   const navigate = useNavigate()
   const { run } = useAction()
@@ -70,18 +72,9 @@ export function MatchesPage() {
         </button>
       </div>
 
-      <ConfirmDialog
-        open={confirmSignOut}
-        title="¿Cerrar sesión?"
-        confirmLabel="CERRAR SESIÓN"
-        onCancel={() => setConfirmSignOut(false)}
-        onConfirm={() => {
-          setConfirmSignOut(false)
-          void signOut()
-        }}
-      >
-        <p>Los datos de este móvil se conservan y volverán a estar disponibles al entrar con tu cuenta.</p>
-      </ConfirmDialog>
+      <SyncIndicator />
+
+      <SignOutDialog open={confirmSignOut} onClose={() => setConfirmSignOut(false)} />
 
       <Button onClick={() => navigate('/partidos/nuevo')}>+ NUEVO PARTIDO</Button>
 

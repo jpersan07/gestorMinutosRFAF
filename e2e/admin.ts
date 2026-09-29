@@ -65,3 +65,78 @@ export async function countEmailsTo(email: string): Promise<number> {
   }
   return search.messages_count ?? 0
 }
+
+/** Cuenta de entrenador con SU PROPIO equipo y temporada activa: cada test trabaja aislado. */
+export async function createCoachWithOwnTeam(): Promise<TestCoach & { readonly teamId: string; readonly teamName: string }> {
+  const coach = await createCoach({ inDemoTeam: false })
+  const teamId = randomUUID()
+  const seasonId = randomUUID()
+  const teamName = `Equipo ${coach.displayName}`
+  const steps = [
+    await admin.from('teams').insert({ id: teamId, name: teamName }),
+    await admin.from('seasons').insert({ id: seasonId, team_id: teamId, name: '2026-27' }),
+    await admin.from('teams').update({ current_season_id: seasonId }).eq('id', teamId),
+    await admin.from('team_members').insert({ team_id: teamId, user_id: coach.id, role: 'admin' }),
+  ]
+  const failed = steps.find((step) => step.error)
+  if (failed?.error) throw failed.error
+  return { ...coach, teamId, teamName }
+}
+
+/** Cliente de servicio para comprobar en los tests qué ha llegado al servidor. */
+export const serverAdmin = admin
+
+/** Eventos del partido tal como están en el SERVIDOR. */
+export async function serverEvents(matchId: string) {
+  const { data, error } = await admin
+    .from('match_events')
+    .select('seq, event_type, device_id')
+    .eq('match_id', matchId)
+    .order('seq')
+  if (error) throw error
+  return data
+}
+
+export async function serverPlayers(teamId: string) {
+  const { data, error } = await admin.from('players').select('name, number').eq('team_id', teamId)
+  if (error) throw error
+  return data
+}
+
+export async function serverMatches(teamId: string) {
+  const { data, error } = await admin.from('matches').select('id, opponent, status').eq('team_id', teamId)
+  if (error) throw error
+  return data
+}
+
+/**
+ * "Móvil B": otro entrenador del mismo equipo TOMA EL CONTROL del partido en el servidor
+ * (CONTROL_TAKEN con el siguiente seq), como lo haría su app.
+ */
+export async function takeControlFromAnotherPhone(teamId: string, matchId: string) {
+  const other = await createCoach({ inDemoTeam: false })
+  const member = await admin.from('team_members').insert({ team_id: teamId, user_id: other.id, role: 'coach' })
+  if (member.error) throw member.error
+  const client = createClient(status.API_URL ?? '', status.PUBLISHABLE_KEY ?? status.ANON_KEY ?? '', {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const signIn = await client.auth.signInWithPassword({ email: other.email, password: other.password })
+  if (signIn.error) throw signIn.error
+  const match = await client.from('matches').select('last_seq').eq('id', matchId).single()
+  if (match.error) throw match.error
+  const { data, error } = await client.rpc('append_match_events', {
+    p_match_id: matchId,
+    p_events: [
+      {
+        id: randomUUID(),
+        seq: match.data.last_seq + 1,
+        type: 'CONTROL_TAKEN',
+        occurred_at: Date.now(),
+        device_id: 'movil-B',
+        payload: {},
+      },
+    ],
+  })
+  if (error) throw error
+  if ((data as { rejected: unknown }).rejected) throw new Error(`B no pudo tomar el control: ${JSON.stringify(data)}`)
+}

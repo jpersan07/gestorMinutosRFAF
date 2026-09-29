@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Navigate, Outlet } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { AppContext, type AppContextValue } from '../context'
+import { SyncProvider } from '../sync/SyncProvider'
 
 /** Las pantallas de la app exigen cuenta y equipo; les da su contexto (entrenador = usuario). */
 export function RequireAccount() {
@@ -14,7 +15,9 @@ export function RequireAccount() {
   if (!value) return <Navigate to="/" replace />
   return (
     <AppContext.Provider value={value}>
-      <Outlet />
+      <SyncProvider>
+        <Outlet />
+      </SyncProvider>
     </AppContext.Provider>
   )
 }

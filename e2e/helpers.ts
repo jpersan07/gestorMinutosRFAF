@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { createCoachWithOwnTeam } from './admin.ts'
 
 /** Cuentas DEMO del seed local (supabase/seed.sql). Solo existen en el Supabase local. */
 export const DEMO_PASSWORD = 'demo-local-2026'
@@ -16,11 +17,22 @@ export async function fillLogin(page: Page, email: string, password: string) {
   await page.getByRole('button', { name: 'ENTRAR' }).click()
 }
 
-/** Inicia sesión con una cuenta DEMO y espera a la lista de partidos. */
-export async function login(page: Page, user: keyof typeof DEMO_USERS = 'isaac') {
+/**
+ * Inicia sesión y espera a la lista de partidos.
+ *   · con `user`: cuenta DEMO del seed (equipo DEMO compartido);
+ *   · sin `user`: cuenta NUEVA con su propio equipo (los datos que sube el test no chocan con otros).
+ */
+export async function login(page: Page, user?: keyof typeof DEMO_USERS) {
   await page.goto('/')
-  await fillLogin(page, DEMO_USERS[user], DEMO_PASSWORD)
+  if (user) {
+    await fillLogin(page, DEMO_USERS[user], DEMO_PASSWORD)
+    await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
+    return null
+  }
+  const coach = await createCoachWithOwnTeam()
+  await fillLogin(page, coach.email, coach.password)
   await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
+  return coach
 }
 
 export async function addPlayer(page: Page, name: string, number: number) {
@@ -70,7 +82,7 @@ export async function fillNextSlot(page: Page, n: number) {
 
 /** Equipo de `players` jugadores, un partido, convocatoria completa y alineación 4-3-3 confirmada. */
 export async function prepareMatch(page: Page, opponent = 'CD Málaga', players = 14) {
-  await login(page)
+  const coach = await login(page)
   await addPlayers(page, players)
   await createMatch(page, { opponent })
   await page.getByRole('link', { name: new RegExp(opponent) }).click()
@@ -80,6 +92,7 @@ export async function prepareMatch(page: Page, opponent = 'CD Málaga', players 
   for (let n = 1; n <= 11; n++) await fillNextSlot(page, n)
   await page.getByRole('button', { name: 'CONFIRMAR ALINEACIÓN' }).click()
   await expect(page.getByText('✓ ALINEACIÓN CONFIRMADA')).toBeVisible()
+  return coach!
 }
 
 /** En la pantalla de partido: toca al jugador del campo, elige quién entra y confirma. */

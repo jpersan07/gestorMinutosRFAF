@@ -8,6 +8,8 @@ export type DataError =
   /** El partido ya empezó (o está guardado) y ese dato ya no se puede cambiar. */
   | { readonly code: 'LOCKED' }
   | { readonly code: 'RESULT_REQUIRED' }
+  /** El servidor rechazó los eventos de este móvil: otro dispositivo tomó el control (3c). */
+  | { readonly code: 'CONTROL_LOST' }
 
 export type DataResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: DataError }
 

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router'
 import { useApp } from '../../app/context'
 import { listPlayers, type PlayerRecord } from '../../data'
+import { numberTakenMessage } from './conflicts'
 import { Button } from '../../ui/Button'
 import { Page } from '../../ui/Page'
 
@@ -15,7 +16,14 @@ function PlayerRow({ player }: { player: PlayerRecord }) {
         <span className="tabular flex size-11 shrink-0 items-center justify-center rounded-full bg-panel-strong text-lg font-black">
           {player.number}
         </span>
-        <span className="flex-1 truncate text-lg font-semibold">{player.name}</span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-lg font-semibold">{player.name}</span>
+          {player.syncState === 'conflict' && player.syncIssue === 'NUMBER_TAKEN' && (
+            <span role="alert" className="text-sm font-bold text-warn">
+              {numberTakenMessage(player)}
+            </span>
+          )}
+        </span>
         <span className="text-sm font-bold text-muted">EDITAR</span>
       </Link>
     </li>

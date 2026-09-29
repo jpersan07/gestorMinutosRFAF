@@ -19,6 +19,8 @@ export function MatchHubPage() {
   const match = useLiveQuery(async () => (await db.matches.get(matchId)) ?? null, [db, matchId])
   const crest = useCrest(match?.crestId ?? null)
   const squad = useLiveQuery(() => getSquad(db, matchId), [db, matchId])
+  const squadRecord = useLiveQuery(() => db.matchSquads.get(matchId), [db, matchId])
+  const rejectedCount = useLiveQuery(() => db.rejectedEvents.where('matchId').equals(matchId).count(), [db, matchId], 0)
 
   if (match === undefined) return null
   if (match === null) {
@@ -37,6 +39,26 @@ export function MatchHubPage() {
         <p className="text-muted">{matchDetailsLine(match)}</p>
         <StatusBadge status={match.status} />
       </section>
+
+      {match.controlLostAt && (
+        <p role="alert" className="rounded-xl bg-warn p-4 font-bold text-accent-ink">
+          Controlado por otro dispositivo: otro móvil ha tomado el control de este partido. Los cambios hechos aquí sin
+          conexión no se han aplicado.
+        </p>
+      )}
+      {!match.controlLostAt && rejectedCount > 0 && (
+        <p role="alert" className="rounded-xl bg-warn p-4 font-bold text-accent-ink">
+          El servidor no ha aceptado parte de este partido ({rejectedCount === 1 ? '1 cambio' : `${rejectedCount} cambios`}).
+          Se han apartado y no cuentan para los minutos.
+        </p>
+      )}
+      {(match.syncState === 'conflict' || squadRecord?.syncState === 'conflict') && (
+        <p role="alert" className="rounded-xl bg-warn p-4 font-bold text-accent-ink">
+          No se han podido guardar en el servidor los cambios de este partido
+          {squadRecord?.syncState === 'conflict' && match.syncState !== 'conflict' ? ' (convocatoria)' : ''}: otro
+          dispositivo ya lo ha empezado. En el servidor se mantienen los datos anteriores.
+        </p>
+      )}
 
       <nav aria-label="Acciones del partido" className="flex flex-col gap-3">
         {canEditMatchDetails(match.status) && (

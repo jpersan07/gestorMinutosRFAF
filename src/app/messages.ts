@@ -33,6 +33,8 @@ export function errorMessage(error: DataError): string {
       return 'El partido ya ha empezado: estos datos ya no se pueden cambiar.'
     case 'RESULT_REQUIRED':
       return 'Escribe el RESULTADO antes de guardar.'
+    case 'CONTROL_LOST':
+      return 'Otro dispositivo ha tomado el control de este partido.'
     case 'MATCH_LOCKED':
       return 'El partido está guardado y no se puede modificar.'
     case 'NOT_CONTROLLER':

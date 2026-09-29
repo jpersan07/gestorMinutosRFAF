@@ -9,5 +9,7 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 60_000,
     fileParallelism: false,
+    // IndexedDB en memoria para los tests del motor de subida (cada "móvil" su base de datos).
+    setupFiles: ['fake-indexeddb/auto'],
   },
 })

@@ -31,6 +31,7 @@ export async function saveReport(
       updatedAt: env.now(),
       updatedBy: coachId,
       syncState: 'pending',
+      syncIssue: null,
     }
     await db.matchReports.put(record)
     return okResult(record)

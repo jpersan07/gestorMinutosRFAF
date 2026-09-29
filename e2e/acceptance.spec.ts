@@ -6,9 +6,9 @@ test('flujo completo del PRD §37', async ({ page }) => {
   await page.clock.install()
   const timer = page.getByRole('timer', { name: 'Cronómetro' })
 
-  // 1. Abrir aplicación · 2. Entrar como ISAAC (cuenta individual, Fase 3)
-  await login(page, 'isaac')
-  await expect(page.getByText('ISAAC DEMO')).toBeVisible()
+  // 1. Abrir aplicación · 2. Entrar como el entrenador (cuenta individual, Fase 3; equipo propio del test)
+  const coach = (await login(page))!
+  await expect(page.getByText(`${coach.displayName} · ${coach.teamName}`)).toBeVisible()
   // (datos previos: plantilla y dos partidos)
   await addPlayers(page, 15)
   await createMatch(page, { opponent: 'CD Málaga', date: '2026-10-10', time: '18:00' })

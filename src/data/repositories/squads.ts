@@ -26,6 +26,7 @@ export async function saveSquad(
       updatedAt: env.now(),
       updatedBy: coachId,
       syncState: 'pending',
+      syncIssue: null,
     }
     await db.matchSquads.put(record)
     return okResult(record)

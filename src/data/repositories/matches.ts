@@ -66,7 +66,11 @@ export async function createMatch(
       savedAt: null,
       createdAt: now,
       updatedAt: now,
+      detailsUpdatedAt: now,
+      controlLostAt: null,
+      controlLossReason: null,
       syncState: 'pending',
+      syncIssue: null,
     }
     await db.matches.add(match)
     return okResult(match)
@@ -91,7 +95,9 @@ export async function updateMatchDetails(
       ...normalizeMatchDetails(change),
       crestId: await applyCrest(db, env, current.crestId, change.crest),
       updatedAt: env.now(),
+      detailsUpdatedAt: env.now(),
       syncState: 'pending',
+      syncIssue: null,
     }
     await db.matches.put(match)
     return okResult(match)
