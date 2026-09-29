@@ -28,7 +28,7 @@ import { lineupOnField, type MatchCommand } from '../../src/domain'
 import { lineupOf } from '../../src/domain/__tests__/harness'
 import type { Database } from '../../src/data/remote/database.types'
 import { toRemoteEvent } from '../../src/data/remote/eventMapping'
-import { appendRaw, createTeam, createUser, env, must, serviceClient, type TestTeam, type TestUser } from './helpers'
+import { appendRaw, createTeam, takeControlRaw, createUser, env, must, serviceClient, type TestTeam, type TestUser } from './helpers'
 
 const crestDataUrl = `data:image/png;base64,${readFileSync('public/pwa-64x64.png').toString('base64')}`
 
@@ -307,7 +307,7 @@ describe('pérdida de control: A sin conexión → B toma el control → A recon
       slot_id: null,
       payload: {},
     }
-    const taken = must(await appendRaw(jordi, matchId, [takeover]))
+    const taken = must(await takeControlRaw(jordi, matchId, 1, takeover))
     expect(taken.data).toMatchObject({ rejected: null })
 
     // A reconecta y sincroniza.

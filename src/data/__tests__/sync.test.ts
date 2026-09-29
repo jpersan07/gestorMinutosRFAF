@@ -50,6 +50,8 @@ describe('clasificación de respuestas del servidor', () => {
   it('eventos: nunca "gana el último"; control perdido, informe pendiente, reintento o inválido', () => {
     expect(classifyEventRejection('SEQ_CONFLICT')).toBe('control-lost')
     expect(classifyEventRejection('NOT_CONTROLLER')).toBe('control-lost')
+    expect(classifyEventRejection('TAKE_CONTROL_REQUIRED')).toBe('control-lost')
+    expect(classifyEventRejection('CONTROL_CHANGED')).toBe('control-lost')
     expect(classifyEventRejection('RESULT_REQUIRED')).toBe('needs-report')
     expect(classifyEventRejection('SEQ_GAP')).toBe('retry')
     expect(classifyEventRejection('INVALID_MATCH_SECOND')).toBe('invalid')

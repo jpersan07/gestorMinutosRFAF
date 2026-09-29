@@ -94,9 +94,24 @@ export interface MatchRecord extends Tracked {
    * en el servidor para estos datos (updatedAt cambia con cada evento del partido y no sirve).
    */
   readonly detailsUpdatedAt?: EpochMs
-  /** El servidor rechazó eventos porque otro dispositivo tomó el control (3c). */
+  /**
+   * Este móvil ha perdido el control del partido (3c/3d): el servidor rechazó sus eventos
+   * (SEQ_CONFLICT, NOT_CONTROLLER) o la descarga trajo el CONTROL_TAKEN de otro dispositivo
+   * (TAKEN_BY_OTHER). Mientras esté marcado, este móvil no escribe nada en el partido.
+   * Solo se limpia cuando el servidor acepta un TOMAR CONTROL de este móvil.
+   */
   readonly controlLostAt?: EpochMs | null
   readonly controlLossReason?: string | null
+  /** Última vez que se cargó el estado OFICIAL del partido (todos sus eventos del servidor). */
+  readonly officialStateAt?: EpochMs | null
+  /** El entrenador pulsó ENTENDIDO en el aviso de control perdido (solo oculta el aviso). */
+  readonly controlLossAcknowledgedAt?: EpochMs | null
+  /**
+   * Corrección del reloj de este móvil respecto al servidor que usan los eventos del partido.
+   * Se congela para cada periodo de control (`controlEventId` = SETUP_STARTED/CONTROL_TAKEN que
+   * lo inició) una vez empezado el partido: nunca cambia a mitad de un periodo.
+   */
+  readonly clockOffset?: { readonly ms: number; readonly controlEventId: Id } | null
 }
 
 export interface MatchSquadRecord extends SyncTracked {

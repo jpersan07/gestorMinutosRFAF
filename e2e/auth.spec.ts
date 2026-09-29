@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { countEmailsTo, createCoach, recoveryLinkFor } from './admin.ts'
-import { addPlayer, DEMO_PASSWORD, DEMO_USERS, fillLogin, login, prepareMatch } from './helpers.ts'
+import { addCoachToTeam, countEmailsTo, createCoach, createCoachWithOwnTeam, recoveryLinkFor } from './admin.ts'
+import { addPlayer, DEMO_USERS, fillLogin, login, prepareMatch } from './helpers.ts'
 
 const AUTH_KEY = 'gestor-minutos-auth'
 
@@ -41,54 +41,70 @@ test('contraseña incorrecta: mensaje claro, sin detalles técnicos', async ({ p
   await expect(page.getByRole('alert')).toHaveText('Email o contraseña incorrectos.')
 })
 
+// Estos tests cambian datos del equipo en el servidor. Como la app DESCARGA los datos del equipo
+// (3d), cada uno trabaja con sus propios equipos y cuentas: nunca con los DEMO compartidos.
+
 test('entrar muestra el entrenador y el equipo; CERRAR SESIÓN conserva los datos del móvil (B-2)', async ({ page }) => {
-  await login(page, 'isaac')
-  await expect(page.getByText('ISAAC DEMO · Equipo DEMO')).toBeVisible()
+  const coach = await createCoachWithOwnTeam()
+  await page.goto('/')
+  await fillLogin(page, coach.email, coach.password)
+  await expect(page.getByText(`${coach.displayName} · ${coach.teamName}`)).toBeVisible()
   await addOnePlayer(page, 'Conservado')
   await signOutFromList(page)
 
-  await login(page, 'isaac')
+  await fillLogin(page, coach.email, coach.password)
   await expect(await playersOnDevice(page)).toContainText('Conservado')
 })
 
 test('otra cuenta de OTRO equipo: aviso y una confirmación; cancelar no borra nada', async ({ page }) => {
-  await login(page, 'isaac')
+  const isaac = await createCoachWithOwnTeam()
+  const otro = await createCoachWithOwnTeam()
+  await page.goto('/')
+  await fillLogin(page, isaac.email, isaac.password)
   await addOnePlayer(page, 'De Isaac')
   await signOutFromList(page)
 
-  await fillLogin(page, DEMO_USERS.otro, DEMO_PASSWORD)
+  await fillLogin(page, otro.email, otro.password)
   const warning = page.getByRole('alertdialog', { name: 'Datos de otro equipo en este móvil' })
   await expect(warning).toContainText('1 jugador')
-  await expect(warning).toContainText('Otro equipo DEMO')
+  await expect(warning).toContainText(otro.teamName)
   await warning.getByRole('button', { name: /CANCELAR/ }).click()
   await expect(page.getByRole('heading', { name: 'INICIAR SESIÓN' })).toBeVisible()
 
   // Cancelar no borró nada.
-  await fillLogin(page, DEMO_USERS.isaac, DEMO_PASSWORD)
+  await fillLogin(page, isaac.email, isaac.password)
   await expect(await playersOnDevice(page)).toContainText('De Isaac')
   await page.getByRole('link', { name: 'Volver' }).click()
   await signOutFromList(page)
 
-  // Confirmar borra y entra en el otro equipo.
-  await fillLogin(page, DEMO_USERS.otro, DEMO_PASSWORD)
+  // Confirmar borra y entra en el otro equipo (que no tiene jugadores ni en el servidor).
+  await fillLogin(page, otro.email, otro.password)
   await page.getByRole('button', { name: 'BORRAR Y CONTINUAR' }).click()
-  await expect(page.getByText('OTRO DEMO · Otro equipo DEMO')).toBeVisible()
+  await expect(page.getByText(`${otro.displayName} · ${otro.teamName}`)).toBeVisible()
   await expect(await playersOnDevice(page)).toContainText('Todavía no hay jugadores')
 })
 
 test('otra cuenta del MISMO equipo: los datos se conservan sin preguntar', async ({ page }) => {
-  await login(page, 'isaac')
+  const isaac = await createCoachWithOwnTeam()
+  const jordi = await addCoachToTeam(isaac.teamId)
+  await page.goto('/')
+  await fillLogin(page, isaac.email, isaac.password)
   await addOnePlayer(page, 'Compartido')
   await signOutFromList(page)
-  await fillLogin(page, DEMO_USERS.jordi, DEMO_PASSWORD)
-  await expect(page.getByText('JORDI DEMO · Equipo DEMO')).toBeVisible()
+  await fillLogin(page, jordi.email, jordi.password)
+  await expect(page.getByText(`${jordi.displayName} · ${isaac.teamName}`)).toBeVisible()
   await expect(await playersOnDevice(page)).toContainText('Compartido')
 })
 
-test('datos de prueba de la versión anterior: aviso con recuento y UNA confirmación (F3-3)', async ({ page }) => {
-  await login(page, 'isaac')
+test('datos de prueba de la versión anterior: aviso con recuento y UNA confirmación (F3-3)', async ({ page, context }) => {
+  const coach = await createCoachWithOwnTeam()
+  await page.goto('/')
+  await fillLogin(page, coach.email, coach.password)
+  await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
+  // Datos de la Fase 2: nunca llegaron al servidor (sin cuenta) → se crean sin conexión…
+  await context.setOffline(true)
   await addOnePlayer(page, 'De prueba')
-  // Simula datos de la Fase 2: sin vincular a ninguna cuenta ni equipo.
+  // …y sin vincular a ninguna cuenta ni equipo.
   await page.evaluate(
     () =>
       new Promise<void>((resolve, reject) => {
@@ -106,7 +122,8 @@ test('datos de prueba de la versión anterior: aviso con recuento y UNA confirma
       }),
   )
   await signOutFromList(page)
-  await fillLogin(page, DEMO_USERS.isaac, DEMO_PASSWORD)
+  await context.setOffline(false)
+  await fillLogin(page, coach.email, coach.password)
   const warning = page.getByRole('alertdialog', { name: 'Datos de prueba en este móvil' })
   await expect(warning).toContainText('datos de prueba de la versión anterior (1 jugador)')
   await warning.getByRole('button', { name: 'BORRAR Y CONTINUAR' }).click()

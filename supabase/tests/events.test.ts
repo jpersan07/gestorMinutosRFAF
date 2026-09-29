@@ -2,17 +2,20 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { benchPlayers, FORMATION_IDS, FORMATIONS, getFormation } from '../../src/domain'
 import { lineupOf, seededRandom } from '../../src/domain/__tests__/harness'
+import type { Json } from '../../src/data/remote/database.types'
 import { toRemoteEvent, type RemoteEventInput } from '../../src/data/remote/eventMapping'
 import {
   append,
   appendRaw,
   createTeam,
+  anonClient,
   createUser,
   expectError,
   matchScenario,
   must,
   p,
   serviceClient,
+  takeControlRaw,
   type AppendResult,
 } from './helpers'
 
@@ -305,7 +308,7 @@ describe('el servidor no se fía del móvil: rechaza eventos inválidos', () => 
     s.device.must({ type: 'SAVE_MATCH' })
     await s.sync()
     const afterSave: RemoteEventInput = { ...bogusSub, id: randomUUID(), seq: s.device.events.length + 1, type: 'CONTROL_TAKEN' }
-    const { data: locked } = await appendRaw(s.coach, s.matchId, [afterSave])
+    const { data: locked } = await takeControlRaw(s.coach, s.matchId, 1, afterSave)
     expect((locked as unknown as AppendResult).rejected?.reason).toBe('MATCH_LOCKED')
   })
 
@@ -368,7 +371,7 @@ describe('control único del partido (TOMAR CONTROL)', () => {
       match_second: null,
       payload: {},
     }
-    const taken = await appendRaw(jordi, s.matchId, [takeover])
+    const taken = await takeControlRaw(jordi, s.matchId, 1, takeover)
     expect((taken.data as unknown as AppendResult).match).toMatchObject({
       controller_device_id: 'movil-de-jordi',
       control_epoch: 2,
@@ -383,7 +386,7 @@ describe('control único del partido (TOMAR CONTROL)', () => {
     expect(match).toMatchObject({ controller_device_id: 'movil-de-jordi', controller_user_id: jordi.id, managed_by: jordi.id })
   })
 
-  it('dos móviles escribiendo a la vez el mismo seq: solo uno gana', async () => {
+  it('dos TOMAR CONTROL a la vez con el mismo control_epoch: solo uno gana (el otro, CONTROL_CHANGED)', async () => {
     const { s, jordi } = await withSecondCoach()
     s.device.kickOff(s.lineup)
     await s.sync()
@@ -400,11 +403,27 @@ describe('control único del partido (TOMAR CONTROL)', () => {
       payload: {},
     })
     const [a, b] = await Promise.all([
-      appendRaw(jordi, s.matchId, [takeover('movil-jordi-1')]),
-      appendRaw(jordi, s.matchId, [takeover('movil-jordi-2')]),
+      takeControlRaw(jordi, s.matchId, 1, takeover('movil-jordi-1')),
+      takeControlRaw(jordi, s.matchId, 1, takeover('movil-jordi-2')),
     ])
     const results = [a.data, b.data] as unknown as AppendResult[]
     expect(results.filter((r) => r.accepted.length === 1)).toHaveLength(1)
+    expect(results.filter((r) => r.rejected?.reason === 'CONTROL_CHANGED')).toHaveLength(1)
+    expect(await serverMatch(s)).toMatchObject({ control_epoch: 2, last_seq: seq })
+  })
+
+  it('dos lotes distintos con el mismo seq a la vez: el bloqueo del partido deja pasar solo uno', async () => {
+    const s = await matchScenario()
+    s.device.kickOff(s.lineup)
+    await s.sync()
+    const from = s.device.events.length
+    s.device.sub(p(s.squad, 10), p(s.squad, 12), '10:00')
+    const first = s.device.events.slice(from).map(toRemoteEvent)
+    const otherSubstitution = randomUUID()
+    const second = first.map((e) => ({ ...e, id: randomUUID(), substitution_id: otherSubstitution }))
+    const [a, b] = await Promise.all([appendRaw(s.coach, s.matchId, first), appendRaw(s.coach, s.matchId, second)])
+    const results = [a.data, b.data] as unknown as AppendResult[]
+    expect(results.filter((r) => r.accepted.length === 2)).toHaveLength(1)
     expect(results.filter((r) => r.rejected?.reason === 'SEQ_CONFLICT')).toHaveLength(1)
   })
 
@@ -420,8 +439,111 @@ describe('control único del partido (TOMAR CONTROL)', () => {
       half: null,
       payload: {},
     }
-    const { data } = await appendRaw(s.coach, s.matchId, [again])
+    const { data } = await takeControlRaw(s.coach, s.matchId, 1, again)
     expect((data as unknown as AppendResult).rejected?.reason).toBe('ALREADY_CONTROLLER')
+  })
+})
+
+describe('TOMAR CONTROL solo por take_match_control (3d)', () => {
+  const takeover = (s: Scenario, device: string): RemoteEventInput => ({
+    ...toRemoteEvent(s.device.events.at(-1)!),
+    id: randomUUID(),
+    seq: s.device.events.length + 1,
+    type: 'CONTROL_TAKEN',
+    device_id: device,
+    half: null,
+    match_second: null,
+    player_id: null,
+    related_player_id: null,
+    substitution_id: null,
+    slot_id: null,
+    payload: {},
+  })
+
+  it('append_match_events no acepta CONTROL_TAKEN: procesa lo anterior y lo rechaza (TAKE_CONTROL_REQUIRED)', async () => {
+    const s = await matchScenario()
+    s.device.setup(s.lineup)
+    const before = s.device.events.slice()
+    const control = { ...takeover(s, 'otro-movil'), seq: before.length + 1 }
+    const { data } = await appendRaw(s.coach, s.matchId, [...before.map(toRemoteEvent), control])
+    const result = data as unknown as AppendResult
+    expect(result.accepted).toHaveLength(before.length)
+    expect(result.rejected).toMatchObject({ id: control.id, reason: 'TAKE_CONTROL_REQUIRED' })
+    expect(await serverMatch(s)).toMatchObject({ control_epoch: 1, last_seq: before.length })
+  })
+
+  it('con un control_epoch que ya no es el actual no se escribe nada (CONTROL_CHANGED)', async () => {
+    const s = await matchScenario()
+    const jordi = await createUser('Jordi')
+    must(await serviceClient().from('team_members').insert({ team_id: s.team.teamId, user_id: jordi.id, role: 'coach' }))
+    s.device.kickOff(s.lineup)
+    await s.sync()
+    const { data } = await takeControlRaw(jordi, s.matchId, 0, takeover(s, 'movil-de-jordi'))
+    expect((data as unknown as AppendResult).rejected?.reason).toBe('CONTROL_CHANGED')
+    expect(await serverMatch(s)).toMatchObject({ control_epoch: 1, controller_device_id: s.device.deviceId })
+    // Reintento idempotente de una toma ya aceptada: duplicado, aunque el epoch ya haya cambiado.
+    const event = takeover(s, 'movil-de-jordi')
+    expect((await takeControlRaw(jordi, s.matchId, 1, event)).data).toMatchObject({ rejected: null })
+    expect((await takeControlRaw(jordi, s.matchId, 1, event)).data).toMatchObject({ duplicates: [event.id], rejected: null })
+  })
+
+  it('solo miembros del equipo; la validación interna no se puede llamar directamente', async () => {
+    const s = await matchScenario()
+    s.device.kickOff(s.lineup)
+    await s.sync()
+    const outsider = await createUser('Otro')
+    await createTeam([{ user: outsider, role: 'admin' }], 'Otro equipo')
+    expectError(await takeControlRaw(outsider, s.matchId, 1, takeover(s, 'intruso')), 'MATCH_NOT_FOUND')
+    const anonymous = await anonClient().rpc('take_match_control', {
+      p_match_id: s.matchId,
+      p_expected_control_epoch: 1,
+      p_event: takeover(s, 'anon') as unknown as Json,
+    })
+    expect(anonymous.error).not.toBeNull()
+    const bypass = await s.coach.client.schema('private' as 'public').rpc('append_match_events_unchecked' as 'append_match_events', {
+      p_match_id: s.matchId,
+      p_events: [takeover(s, 'bypass')] as unknown as Json,
+    })
+    expect(bypass.error).not.toBeNull()
+    expect(await serverMatch(s)).toMatchObject({ control_epoch: 1 })
+  })
+
+  it('hora del servidor: solo con sesión', async () => {
+    const user = await createUser('Isaac')
+    const before = Date.now()
+    const { data } = must(await user.client.rpc('server_time'))
+    expect(Number(data)).toBeGreaterThan(before - 60_000)
+    expect(Number(data)).toBeLessThan(Date.now() + 60_000)
+    expect((await anonClient().rpc('server_time')).error).not.toBeNull()
+  })
+})
+
+describe('historial sin huecos (garantía de la base de datos)', () => {
+  it('un evento con seq = n no puede existir sin el n − 1, ni siquiera con la clave de servicio', async () => {
+    const s = await matchScenario()
+    s.device.kickOff(s.lineup)
+    await s.sync()
+    const last = s.device.events.length
+    const row = (seq: number) => ({
+      id: randomUUID(),
+      team_id: s.team.teamId,
+      match_id: s.matchId,
+      seq,
+      event_type: 'MATCH_SAVED' as const,
+      occurred_at: new Date().toISOString(),
+      device_id: 'clave-de-servicio',
+      user_id: s.coach.id,
+    })
+    expectError(await serviceClient().from('match_events').insert(row(last + 2)), 'SEQ_GAP')
+    expectError(await serviceClient().from('match_events').insert(row(last + 5)), 'SEQ_GAP')
+    // Por la puerta normal, un salto de seq tampoco se acepta.
+    s.device.sub(p(s.squad, 10), p(s.squad, 12), '10:00')
+    const skipped = s.device.events.slice(last + 1).map(toRemoteEvent)
+    expect(((await appendRaw(s.coach, s.matchId, skipped)).data as unknown as AppendResult).rejected?.reason).toBe('SEQ_GAP')
+    // El historial del servidor es 1..last_seq, sin huecos.
+    const seqs = must(await s.coach.client.from('match_events').select('seq').eq('match_id', s.matchId).order('seq')).data!
+    expect(seqs.map((e) => e.seq)).toEqual(Array.from({ length: last }, (_, i) => i + 1))
+    expect((await serverMatch(s)).last_seq).toBe(last)
   })
 })
 

@@ -1,6 +1,6 @@
 # Plan Fase 3 — Supabase: acceso, base de datos compartida y sincronización
 
-Estado: **APROBADO** — decisiones F3-1…F3-7 resueltas (§11). Bloques **3a** (servidor y seguridad), **3b** (acceso) y **3c** (subida) implementados; 3d–3e pendientes.
+Estado: **APROBADO** — decisiones F3-1…F3-7 resueltas (§11). Bloques **3a** (servidor y seguridad), **3b** (acceso), **3c** (subida) y **3d** (descarga y TOMAR CONTROL) implementados; 3e pendiente.
 
 Objetivo: que varios móviles compartan jugadores, partidos y resultados **sin perder la regla de oro de la Fase 2**: durante el partido la app funciona igual con o sin Internet. La interfaz sigue hablando solo con IndexedDB (Dexie); Supabase es persistencia y sincronización compartida, **no** el motor del partido.
 
@@ -109,7 +109,7 @@ Procesa en orden y se detiene en el primer rechazo, devolviendo `{ accepted, dup
 - Cualquier otro evento solo se acepta del **dispositivo + usuario** controlador.
 - La llamada bloquea la fila del partido (`FOR UPDATE`) y exige `seq = último + 1`: dos móviles nunca pueden escribir el mismo `seq`; el que llega tarde recibe `SEQ_CONFLICT`.
 - Un móvil que perdió el control sin saberlo (sin conexión) ve rechazados sus eventos (`SEQ_CONFLICT` / `NOT_CONTROLLER`) → en 3d: aviso y recarga desde el servidor.
-- TOMAR CONTROL en la app (3d): solo con conexión; se envía inmediatamente y solo se actúa como controlador cuando el servidor lo acepta.
+- TOMAR CONTROL en la app (3d): solo con conexión, por `take_match_control` (comparar-y-cambiar sobre `control_epoch`); solo se actúa como controlador cuando el servidor lo acepta. `append_match_events` ya no acepta `CONTROL_TAKEN`.
 
 ### Preparado para después (sin implementarlo ahora)
 - **Realtime**: `matches` (estado/controlador) y `match_events` tienen clave primaria y cursor de servidor; bastará con añadirlas a la publicación `supabase_realtime`.
@@ -131,11 +131,11 @@ Procesa en orden y se detiene en el primer rechazo, devolviendo `{ accepted, dup
 - `upsert` idempotente soportado: se concede UPDATE sobre las claves (`id`, `team_id`, `match_id`…) y un trigger (`IMMUTABLE_COLUMN`) impide cambiarlas; reenviar los mismos datos funciona y mover filas entre partidos/equipos no.
 - `mapping` evento dominio ↔ servidor ya implementado y probado: `src/data/remote/eventMapping.ts`.
 
-## 6. Descarga (3d)
+## 6. Descarga (3d) — implementada (ver `PLAN_3D.md`)
 
-- Cada 15 s y, además, inmediatamente al abrir un partido, volver de segundo plano, recuperar conexión, TOMAR CONTROL y ante pérdida de control (F3-6).
-- Por tabla, `synced_at > cursor` con un pequeño solape (las transacciones pueden confirmar fuera de orden) y fusión idempotente.
-- Eventos: se añaden los que falten (nunca se modifican). Filas editables: "gana el último".
+- Cada 15 s y, además, inmediatamente al abrir un partido, volver de segundo plano, recuperar conexión, TOMAR CONTROL y ante pérdida de control (F3-6). Partido en consulta: cada 5 s.
+- Datos editables: por tabla, `synced_at > cursor − 2 min` y fusión idempotente con la regla del servidor.
+- Eventos: por partido, `seq > último local` (el servidor garantiza que no hay huecos); se añaden los que falten y nunca se modifican.
 
 ## 7. Interfaz nueva (3b–3d)
 
@@ -145,7 +145,7 @@ INICIAR SESIÓN, aviso de descarte de datos de prueba, banner SIN CONEXIÓN, ind
 
 - `npm test`: dominio, datos locales y mapeo de eventos (sin servidor).
 - `npm run test:db` (Supabase local con Docker): RLS, permisos por columna, bloqueos, guardián de eventos (con eventos generados por el propio motor de la app, incluidos partidos aleatorios), control único y concurrencia, inmutabilidad, Storage y seed.
-- E2E multi-dispositivo en 3e.
+- E2E con dos navegadores (3d, `e2e/devices.spec.ts`): descarga, modo consulta, TOMAR CONTROL y pérdida de control. En 3e, contra el despliegue real.
 
 ## 9. Bloques
 
@@ -154,7 +154,7 @@ INICIAR SESIÓN, aviso de descarte de datos de prueba, banner SIN CONEXIÓN, ind
 | 3a | Supabase local, migraciones, RLS, bloqueos, guardián de eventos, control único, Storage, seed de prueba, tipos generados, tests de base de datos | hecho |
 | 3b | Cuentas individuales: INICIAR SESIÓN, sesión persistente (también sin conexión), recuperación de contraseña, elegir equipo, descarte de datos de prueba, CERRAR SESIÓN; equipo/temporada/perfiles desde el servidor; Dexie v2 (ver `PLAN_3B.md`) | hecho |
 | 3c | Subida offline-first (orden fijo, idempotente, exclusión mutua), aviso sin conexión, indicador, conflictos C-1/C-2, cuarentena y CONTROL PERDIDO, errores técnicos (ver `PLAN_3C.md`) | hecho |
-| 3d | Descarga + fusión + TOMAR CONTROL entre dispositivos + aviso de control perdido | pendiente |
+| 3d | Descarga + fusión (eventos solo se añaden; editables "gana el último" como el servidor), TOMAR CONTROL atómico (`take_match_control`), historial sin huecos, reloj del servidor, modo consulta, CONTROL PERDIDO con estado oficial y ENTENDIDO (ver `PLAN_3D.md`) | hecho |
 | 3e | E2E multi-dispositivo; despliegue en Vercel (HTTPS); guía de puesta en marcha | pendiente |
 
 ---

@@ -10,7 +10,8 @@ import {
   loadTeamContext,
   localScopeFor,
   logError,
-  systemEnv,
+  newId,
+  ServerClock,
   type AppScope,
 } from '../data'
 import { AuthContext, type AuthContextValue, type AuthStatus } from './auth/AuthContext'
@@ -22,6 +23,9 @@ const db = new AppDatabase()
 const url = import.meta.env.VITE_SUPABASE_URL
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 const supabase = url && publishableKey ? createSupabase(url, publishableKey) : null
+// Reloj corregido con la hora del servidor (3d): lo usan los datos editables y los eventos.
+const clock = new ServerClock()
+const appEnv = clock.env(newId)
 
 type BootState =
   | { readonly phase: 'loading' }
@@ -57,7 +61,8 @@ export function Boot({ children }: { children: ReactNode }) {
     ;(async () => {
       try {
         void navigator.storage?.persist?.()
-        const device = await getDeviceId(db, systemEnv)
+        const device = await getDeviceId(db, appEnv)
+        await clock.load(db)
         await discardUnfinishedRecovery(supabase)
         const session = await readStoredSession(supabase)
         const account = await getLocalAccount(db)
@@ -144,7 +149,7 @@ export function Boot({ children }: { children: ReactNode }) {
         }
         const context = await loadTeamContext(supabase, scope.teamId)
         if (!context.season) return
-        const next: AppScope = await applyTeamContext(db, systemEnv, scope.userId, { ...context, season: context.season })
+        const next: AppScope = await applyTeamContext(db, appEnv, scope.userId, { ...context, season: context.season })
         if (next.seasonId !== scope.seasonId) setStatus({ kind: 'ready', scope: next, sessionLost: false })
       } catch {
         // Sin red o error temporal: se reintentará al volver la conexión.
@@ -186,7 +191,8 @@ export function Boot({ children }: { children: ReactNode }) {
       supabase && state.phase === 'running'
         ? {
             db,
-            env: systemEnv,
+            env: appEnv,
+            clock,
             supabase,
             deviceId: state.deviceId,
             status: state.status,

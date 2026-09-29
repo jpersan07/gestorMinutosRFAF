@@ -9,20 +9,17 @@ export interface PitchSlotProps {
   readonly highlighted?: boolean
   readonly ariaLabel: string
   readonly onClick?: () => void
+  /** Solo consulta: no es un botón (elemento de la lista "En el campo"). */
+  readonly readOnly?: boolean
 }
 
 /** Posición en el campo: dorsal en un círculo y nombre debajo (o "+" y la posición si está vacía). */
-export function PitchSlot({ x, y, role, player, highlighted = false, ariaLabel, onClick }: PitchSlotProps) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={onClick}
-      disabled={!onClick}
-      // Margen en los bordes para que dorsal + nombre no se corten (portero abajo, delanteros arriba).
-      style={{ left: `${x}%`, bottom: `calc(${y}% * 0.84 + 8%)` }}
-      className="absolute flex w-[22%] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 disabled:cursor-default"
-    >
+export function PitchSlot({ x, y, role, player, highlighted = false, ariaLabel, onClick, readOnly = false }: PitchSlotProps) {
+  // Margen en los bordes para que dorsal + nombre no se corten (portero abajo, delanteros arriba).
+  const style = { left: `${x}%`, bottom: `calc(${y}% * 0.84 + 8%)` }
+  const className = 'absolute flex w-[22%] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 disabled:cursor-default'
+  const content = (
+    <>
       <span
         className={`tabular flex size-[clamp(2rem,14cqw,2.75rem)] items-center justify-center rounded-full text-[clamp(0.85rem,6cqw,1.125rem)] font-black shadow-lg transition ${
           player
@@ -37,6 +34,18 @@ export function PitchSlot({ x, y, role, player, highlighted = false, ariaLabel, 
       <span className="max-w-full truncate rounded bg-black/45 px-1 text-[clamp(0.6rem,3.6cqw,0.75rem)] font-bold leading-[1.6] text-line">
         {player ? player.name : role}
       </span>
+    </>
+  )
+  if (readOnly) {
+    return (
+      <div role="listitem" aria-label={ariaLabel} style={style} className={className}>
+        {content}
+      </div>
+    )
+  }
+  return (
+    <button type="button" aria-label={ariaLabel} onClick={onClick} disabled={!onClick} style={style} className={className}>
+      {content}
     </button>
   )
 }

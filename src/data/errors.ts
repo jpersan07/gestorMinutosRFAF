@@ -10,6 +10,10 @@ export type DataError =
   | { readonly code: 'RESULT_REQUIRED' }
   /** El servidor rechazó los eventos de este móvil: otro dispositivo tomó el control (3c). */
   | { readonly code: 'CONTROL_LOST' }
+  /** TOMAR CONTROL solo existe en el servidor (3d): nunca se registra solo en el móvil. */
+  | { readonly code: 'TAKE_CONTROL_REQUIRES_SERVER' }
+  /** ENTENDIDO antes de haber descargado el estado oficial del partido (3d). */
+  | { readonly code: 'OFFICIAL_STATE_PENDING' }
 
 export type DataResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: DataError }
 

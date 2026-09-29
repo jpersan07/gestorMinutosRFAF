@@ -109,33 +109,38 @@ export async function serverMatches(teamId: string) {
   return data
 }
 
-/**
- * "Móvil B": otro entrenador del mismo equipo TOMA EL CONTROL del partido en el servidor
- * (CONTROL_TAKEN con el siguiente seq), como lo haría su app.
- */
-export async function takeControlFromAnotherPhone(teamId: string, matchId: string) {
+/** Añade un entrenador NUEVO al equipo (otra cuenta, otro móvil). */
+export async function addCoachToTeam(teamId: string): Promise<TestCoach> {
   const other = await createCoach({ inDemoTeam: false })
   const member = await admin.from('team_members').insert({ team_id: teamId, user_id: other.id, role: 'coach' })
   if (member.error) throw member.error
+  return other
+}
+
+/**
+ * "Móvil B": otro entrenador del mismo equipo TOMA EL CONTROL del partido en el servidor, como
+ * lo haría su app: take_match_control con el control_epoch y el seq que ha descargado.
+ */
+export async function takeControlFromAnotherPhone(teamId: string, matchId: string) {
+  const other = await addCoachToTeam(teamId)
   const client = createClient(status.API_URL ?? '', status.PUBLISHABLE_KEY ?? status.ANON_KEY ?? '', {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   const signIn = await client.auth.signInWithPassword({ email: other.email, password: other.password })
   if (signIn.error) throw signIn.error
-  const match = await client.from('matches').select('last_seq').eq('id', matchId).single()
+  const match = await client.from('matches').select('last_seq, control_epoch').eq('id', matchId).single()
   if (match.error) throw match.error
-  const { data, error } = await client.rpc('append_match_events', {
+  const { data, error } = await client.rpc('take_match_control', {
     p_match_id: matchId,
-    p_events: [
-      {
-        id: randomUUID(),
-        seq: match.data.last_seq + 1,
-        type: 'CONTROL_TAKEN',
-        occurred_at: Date.now(),
-        device_id: 'movil-B',
-        payload: {},
-      },
-    ],
+    p_expected_control_epoch: match.data.control_epoch,
+    p_event: {
+      id: randomUUID(),
+      seq: match.data.last_seq + 1,
+      type: 'CONTROL_TAKEN',
+      occurred_at: Date.now(),
+      device_id: 'movil-B',
+      payload: {},
+    },
   })
   if (error) throw error
   if ((data as { rejected: unknown }).rejected) throw new Error(`B no pudo tomar el control: ${JSON.stringify(data)}`)

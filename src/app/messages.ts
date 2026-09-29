@@ -35,6 +35,10 @@ export function errorMessage(error: DataError): string {
       return 'Escribe el RESULTADO antes de guardar.'
     case 'CONTROL_LOST':
       return 'Otro dispositivo ha tomado el control de este partido.'
+    case 'TAKE_CONTROL_REQUIRES_SERVER':
+      return 'Para tomar el control necesitas conexión.'
+    case 'OFFICIAL_STATE_PENDING':
+      return 'Esperando conexión para cargar el partido del otro dispositivo.'
     case 'MATCH_LOCKED':
       return 'El partido está guardado y no se puede modificar.'
     case 'NOT_CONTROLLER':

@@ -13,6 +13,7 @@ import {
 import type { AppDatabase, MatchRecord, PlayerMatchMinutesRecord, StoredEvent } from '../db'
 import type { DataEnv } from '../env'
 import { failResult, okResult, type DataResult } from '../errors'
+import { lastControlEvent, matchClockOffset } from '../sync/clock'
 
 /** Quién ejecuta el comando: este dispositivo y el entrenador seleccionado. */
 export interface Actor {
@@ -53,8 +54,12 @@ async function runStep(
 
   const stored = await listMatchEvents(db, matchId)
   const state = replay(matchId, stored)
+  // Hora de los eventos = reloj del móvil + corrección respecto al servidor, congelada para
+  // este periodo de control desde PLAY (ver sync/clock.ts).
+  const liveOffset = env.clockOffsetMs?.() ?? 0
+  const offset = matchClockOffset(match, stored, liveOffset)
   const ctx: CommandContext = {
-    now: env.now(),
+    now: env.now() - liveOffset + offset.ms,
     deviceId: actor.deviceId,
     coachId: actor.coachId,
     squad: (await db.matchSquads.get(matchId))?.playerIds ?? [],
@@ -64,7 +69,11 @@ async function runStep(
 
   if (result.events.length > 0) {
     await db.matchEvents.bulkAdd(result.events.map((event) => ({ ...event, syncState: 'pending' as const })))
-    await db.matches.put(matchRecordFor(match, result.state, result.events, actor, ctx.now))
+    const control = lastControlEvent([...stored, ...result.events])
+    await db.matches.put({
+      ...matchRecordFor(match, result.state, result.events, actor, env.now()),
+      clockOffset: control ? { ms: offset.ms, controlEventId: control.id } : (match.clockOffset ?? null),
+    })
     if (result.state.status === 'finished' || result.state.status === 'saved') {
       await writeMinutesProjection(db, matchId, [...stored, ...result.events])
     }
@@ -116,6 +125,9 @@ export async function runMatchCommand(
   command: MatchCommand,
   actor: Actor,
 ): Promise<DataResult<MatchState>> {
+  // TOMAR CONTROL es una operación del servidor (sync/takeControl.ts): este móvil no pasa a
+  // controlar el partido hasta que el servidor lo acepta.
+  if (command.type === 'TAKE_CONTROL') return failResult({ code: 'TAKE_CONTROL_REQUIRES_SERVER' })
   return db.transaction('rw', ENGINE_TABLES(db), () =>
     runStep(db, env, matchId, actor, (state, ctx) => execute(state, command, ctx)),
   )

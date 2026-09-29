@@ -92,7 +92,7 @@ test('PÉRDIDA DE CONTROL: A sin conexión registra un cambio → B toma el cont
   await expect(page.getByRole('list', { name: 'Cambios no aplicados' })).toHaveText(`10' ${p(10)} → ${p(12)}`)
 
   // A ya no puede registrar nada: ni cambios (no hay campo) ni finales automáticos.
-  await expect(page.getByRole('timer')).toHaveCount(0)
+  await expect(page.getByRole('timer', { name: 'Cronómetro', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /^DC: / })).toHaveCount(0)
   await page.clock.fastForward('40:00')
   await page.waitForTimeout(500)

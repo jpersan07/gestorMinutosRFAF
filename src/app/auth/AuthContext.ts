@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { AppDatabase, AppScope, DataEnv, Supabase } from '../../data'
+import type { AppDatabase, AppScope, DataEnv, ServerClock, Supabase } from '../../data'
 import type { Id } from '../../domain'
 
 export type AuthStatus =
@@ -10,7 +10,9 @@ export type AuthStatus =
 
 export interface AuthContextValue {
   readonly db: AppDatabase
+  /** Hora corregida con la del servidor (ver ServerClock). */
   readonly env: DataEnv
+  readonly clock: ServerClock
   readonly supabase: Supabase
   readonly deviceId: string
   readonly status: AuthStatus

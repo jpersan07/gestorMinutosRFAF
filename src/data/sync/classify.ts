@@ -18,6 +18,10 @@ export function classifyEventRejection(reason: string): EventRejectionKind {
       return 'retry'
     case 'SEQ_CONFLICT':
     case 'NOT_CONTROLLER':
+    // Un CONTROL_TAKEN que no pasó por take_match_control (3d) o con el control ya cambiado:
+    // este móvil NO es el controlador.
+    case 'TAKE_CONTROL_REQUIRED':
+    case 'CONTROL_CHANGED':
       return 'control-lost'
     default:
       return 'invalid'

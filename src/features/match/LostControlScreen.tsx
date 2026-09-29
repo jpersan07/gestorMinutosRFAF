@@ -1,23 +1,35 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApp } from '../../app/context'
 import type { MatchView } from '../../app/match/useMatch'
+import { errorMessage } from '../../app/messages'
 import { describeRejectedEvents } from '../../app/sync/describeRejected'
+import { useSync } from '../../app/sync/SyncContext'
+import { useAction } from '../../app/useAction'
+import { acknowledgeControlLoss, canAcknowledgeControlLoss } from '../../data'
 import { Button } from '../../ui/Button'
+import { MatchReadOnly } from './MatchReadOnly'
 
 /**
- * El servidor rechazó los eventos de este móvil porque otro dispositivo tomó el control (3c).
- * Solo lectura: aquí ya no se puede registrar nada. Los cambios no aplicados están en cuarentena.
+ * Este móvil ha perdido el control del partido (3c/3d). Solo lectura: aquí ya no se puede
+ * registrar nada. Muestra los cambios de este móvil que NO se aplicaron (cuarentena) y, en cuanto
+ * está descargado, el partido tal como lo ha dejado el otro dispositivo. ENTENDIDO solo cierra el
+ * aviso (el partido sigue en modo consulta) y solo con el estado oficial ya cargado.
  */
-export function LostControlScreen({ view }: { view: MatchView }) {
-  const { db } = useApp()
+export function LostControlScreen({ view, now }: { view: MatchView; now: number }) {
+  const { db, env, scope } = useApp()
+  const { status } = useSync()
   const navigate = useNavigate()
+  const { run, busy, unexpected } = useAction()
+  const [error, setError] = useState<string | null>(null)
   const rejected = useLiveQuery(
     async () => (await db.rejectedEvents.where('matchId').equals(view.match.id).sortBy('seq')).map((r) => r.event),
     [db, view.match.id],
   )
   const nameOf = (id: string) => view.playersById.get(id)?.name ?? 'Jugador'
   const lines = rejected ? describeRejectedEvents(rejected, nameOf) : []
+  const officialLoaded = canAcknowledgeControlLoss(view.match, view.events, scope)
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-5 px-4 py-8">
@@ -40,7 +52,38 @@ export function LostControlScreen({ view }: { view: MatchView }) {
         )}
         <p className="font-semibold">El partido continúa en el otro dispositivo.</p>
       </section>
-      <Button onClick={() => navigate('/partidos', { replace: true })}>VOLVER A PARTIDOS</Button>
+
+      {officialLoaded ? (
+        <>
+          <h2 className="text-center text-sm font-bold tracking-[0.2em] text-muted">ASÍ ESTÁ EL PARTIDO AHORA</h2>
+          <MatchReadOnly view={view} now={now} />
+        </>
+      ) : (
+        <p role="status" className="rounded-xl bg-panel p-4 text-center font-bold">
+          {status.online
+            ? 'Cargando el partido del otro dispositivo…'
+            : 'Esperando conexión para cargar el partido del otro dispositivo.'}
+        </p>
+      )}
+
+      {(error ?? unexpected) && (
+        <p role="alert" className="rounded-xl bg-danger px-3 py-2 font-bold text-danger-ink">
+          {error ?? unexpected}
+        </p>
+      )}
+      <Button
+        disabled={!officialLoaded || busy}
+        onClick={async () => {
+          setError(null)
+          const result = await run(() => acknowledgeControlLoss(db, env, view.match.id, scope))
+          if (result && !result.ok) setError(errorMessage(result.error))
+        }}
+      >
+        ENTENDIDO
+      </Button>
+      <Button variant="secondary" onClick={() => navigate('/partidos', { replace: true })}>
+        VOLVER A PARTIDOS
+      </Button>
     </main>
   )
 }

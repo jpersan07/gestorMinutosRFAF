@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router'
 import { useApp, useCoachId } from '../../app/context'
+import { isLive } from '../../app/matchStatus'
 import { useAction } from '../../app/useAction'
 import { useCrest } from '../../app/useCrest'
 import { listMatches, type MatchRecord } from '../../data'
@@ -14,8 +15,11 @@ import { SyncIndicator } from '../../app/sync/SyncIndicator'
 import { matchDetailsLine } from './matchDetails'
 import { SignOutDialog } from './SignOutDialog'
 
-function MatchCard({ match }: { match: MatchRecord }) {
+function MatchCard({ match, deviceId }: { match: MatchRecord; deviceId: string }) {
   const crest = useCrest(match.crestId)
+  const elsewhere =
+    Boolean(match.controlLostAt) ||
+    (isLive(match.status) && match.controllerDeviceId !== null && match.controllerDeviceId !== deviceId)
   return (
     <li>
       <Link
@@ -28,7 +32,7 @@ function MatchCard({ match }: { match: MatchRecord }) {
           <span className="truncate text-sm text-muted">{matchDetailsLine(match)}</span>
           <span className="flex flex-wrap items-center gap-2">
             <StatusBadge status={match.status} />
-            {match.controlLostAt && (
+            {elsewhere && (
               <span className="text-xs font-black text-warn">Controlado por otro dispositivo</span>
             )}
           </span>
@@ -93,7 +97,7 @@ export function MatchesPage() {
 
       <ul className="flex flex-col gap-3">
         {matches?.map((match) => (
-          <MatchCard key={match.id} match={match} />
+          <MatchCard key={match.id} match={match} deviceId={scope.deviceId} />
         ))}
       </ul>
     </Page>

@@ -6,8 +6,10 @@ import { logError } from '../repositories/errorLog'
 import type { Supabase } from '../remote/client'
 import type { Json } from '../remote/database.types'
 import { toRemoteEvent } from '../remote/eventMapping'
+import type { AppendResult } from '../remote/syncRemote'
 import { classifyEventRejection, classifyRowError } from './classify'
 import { crestUpload, errorLogRow, matchRow, minutesRow, playerRow, reportRow, squadRow } from './mapping'
+import { withSyncLock } from './lock'
 import { quarantineRejectedEvents } from './quarantine'
 
 export interface PushContext {
@@ -32,30 +34,6 @@ export interface PushReport {
 const EVENTS_PER_CALL = 100
 const ERRORS_PER_CALL = 50
 
-interface AppendResult {
-  readonly accepted: Id[]
-  readonly duplicates: Id[]
-  readonly rejected: { readonly id: Id; readonly seq: number; readonly reason: string } | null
-}
-
-// ---------------------------------------------------------------------------------------------
-// Exclusión mutua: nunca dos subidas a la vez (otra pestaña o el temporizador y un cambio).
-// ---------------------------------------------------------------------------------------------
-
-const chains = new WeakMap<AppDatabase, Promise<unknown>>()
-
-function withSyncLock<T>(db: AppDatabase, task: () => Promise<T>): Promise<T> {
-  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
-  if (locks) return locks.request(`gestor-minutos-sync:${db.name}`, task)
-  const previous = chains.get(db) ?? Promise.resolve()
-  const run = previous.then(task, task)
-  chains.set(
-    db,
-    run.catch(() => undefined),
-  )
-  return run
-}
-
 /**
  * Una pasada de subida (orden §2 del plan 3c). Nunca lanza por problemas de red o del
  * servidor: lo que no se pueda subir queda pendiente para la siguiente pasada.
@@ -64,7 +42,8 @@ export function pushOnce(context: PushContext): Promise<PushReport> {
   return withSyncLock(context.db, () => runPush(context))
 }
 
-async function runPush({ db, supabase, scope, now = () => Date.now() }: PushContext): Promise<PushReport> {
+/** Subida SIN el candado: solo dentro de withSyncLock (pasada completa, TOMAR CONTROL). */
+export async function runPush({ db, supabase, scope, now = () => Date.now() }: PushContext): Promise<PushReport> {
   let uploaded = 0
   let newConflicts = 0
   let transientFailures = 0

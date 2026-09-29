@@ -629,6 +629,11 @@ export type Database = {
     };
     Functions: {
       append_match_events: { Args: { p_events: Json; p_match_id: string }; Returns: Json };
+      server_time: { Args: Record<PropertyKey, never>; Returns: number };
+      take_match_control: {
+        Args: { p_event: Json; p_expected_control_epoch: number; p_match_id: string };
+        Returns: Json;
+      };
     };
     Enums: {
       match_event_type:

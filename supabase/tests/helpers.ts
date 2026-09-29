@@ -132,6 +132,15 @@ export async function appendRaw(user: TestUser, matchId: string, events: readonl
   })
 }
 
+/** TOMAR CONTROL atómico: solo si el control_epoch del servidor sigue siendo `expectedEpoch`. */
+export async function takeControlRaw(user: TestUser, matchId: string, expectedEpoch: number, event: RemoteEventInput) {
+  return user.client.rpc('take_match_control', {
+    p_match_id: matchId,
+    p_expected_control_epoch: expectedEpoch,
+    p_event: event as unknown as Json,
+  })
+}
+
 export async function append(user: TestUser, matchId: string, events: readonly MatchEvent[]): Promise<AppendResult> {
   const { data, error } = await appendRaw(user, matchId, events.map(toRemoteEvent))
   if (error) throw new Error(`${error.code}: ${error.message}`)

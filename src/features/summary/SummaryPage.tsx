@@ -22,7 +22,9 @@ function Summary({ view, initialReport }: { view: MatchView; initialReport: Matc
   const navigate = useNavigate()
   const { run, busy, unexpected } = useAction()
   const finished = view.state.status === 'finished'
-  const report = useReportDraft(view.match.id, initialReport, finished)
+  // Solo el dispositivo que controla el partido escribe el informe y lo guarda; el resto consulta.
+  const editable = finished && view.isController && !view.match.controlLostAt
+  const report = useReportDraft(view.match.id, initialReport, editable)
   const [step, setStep] = useState<SaveStep>('idle')
   const [resultError, setResultError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -60,14 +62,19 @@ function Summary({ view, initialReport }: { view: MatchView; initialReport: Matc
       {!finished && (
         <Button onClick={() => navigate('/partidos')}>VOLVER A PARTIDOS</Button>
       )}
+      {finished && !editable && (
+        <p className="rounded-xl bg-panel p-3 text-center font-bold">
+          MODO CONSULTA · El informe y el guardado los hace el dispositivo que controla el partido.
+        </p>
+      )}
 
       <MatchSummaryView summary={summary} playersById={view.playersById} />
 
       <ReportForm
         values={report.values}
-        readOnly={!finished}
+        readOnly={!editable}
         resultError={resultError}
-        status={finished ? (report.unexpected ?? (report.saved ? 'Guardado en el dispositivo.' : 'Guardando…')) : null}
+        status={editable ? (report.unexpected ?? (report.saved ? 'Guardado en el dispositivo.' : 'Guardando…')) : null}
         onChange={(patch) => {
           if (patch.result?.trim()) setResultError(null)
           report.change(patch)
@@ -75,7 +82,7 @@ function Summary({ view, initialReport }: { view: MatchView; initialReport: Matc
         onBlur={() => void report.flush()}
       />
 
-      {finished && (
+      {editable && (
         <>
           {(error ?? unexpected) && <p className="font-semibold text-danger">{error ?? unexpected}</p>}
           <Button className="min-h-16 text-xl" disabled={busy} onClick={() => void startSave()}>
@@ -128,5 +135,8 @@ export function SummaryPage() {
   if (view.state.status !== 'finished' && view.state.status !== 'saved') {
     return <Navigate to={`/partidos/${matchId}`} replace />
   }
-  return <Summary key={matchId} view={view} initialReport={report} />
+  // En consulta, el informe que llega del servidor se vuelve a pintar (no hay borrador que proteger).
+  const editable = view.state.status === 'finished' && view.isController && !view.match.controlLostAt
+  const key = editable ? matchId : `${matchId}:${report?.updatedAt ?? 0}`
+  return <Summary key={key} view={view} initialReport={report} />
 }
