@@ -15,6 +15,9 @@ export function classifyEventRejection(reason: string): EventRejectionKind {
     case 'RESULT_REQUIRED':
       return 'needs-report'
     case 'SEQ_GAP':
+    // Hora futura respecto al servidor (3e.1): el evento se queda pendiente y entra cuando su
+    // hora ya ha pasado. No se pierde nada ni va a cuarentena.
+    case 'EVENT_IN_FUTURE':
       return 'retry'
     case 'SEQ_CONFLICT':
     case 'NOT_CONTROLLER':

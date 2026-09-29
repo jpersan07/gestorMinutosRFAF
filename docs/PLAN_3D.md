@@ -228,7 +228,7 @@ Después de fusionar:
 
 - **Sin Realtime.** Lo que hace otro móvil tarda hasta 5 s (en consulta) o 15 s (resto) en verse.
 - **Mismo móvil, otra cuenta del mismo equipo con un partido en juego.** El controlador en el móvil se identifica por dispositivo (dominio) y en el servidor por dispositivo y cuenta. En ese caso raro, el aviso de CONTROL PERDIDO no ofrece ENTENDIDO; se puede volver a la lista.
-- **Hora futura.** El servidor no rechaza eventos con hora en el futuro. Solo comprueba la coherencia entre eventos, porque los tests E2E adelantan el reloj del navegador. Se puede añadir un margen en 3e.
+- **Hora futura.** Resuelto en 3e.1: el servidor rechaza eventos más de 60 s en el futuro (`EVENT_IN_FUTURE`, reintentable; ver `PLAN_3E.md` §11).
 - **Salir de un equipo o perder la membresía** con datos pendientes no tiene todavía un flujo propio en la app. El servidor ya lo impide con RLS.
 - **Descarga inicial sin paginación avanzada.** Solo páginas de 1000 filas por tabla; suficiente para el volumen previsto.
 - **Una desconexión a mitad de TOMAR CONTROL** (tras aceptarlo el servidor) se resuelve en la siguiente descarga, sin reintento automático del botón.

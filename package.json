@@ -12,13 +12,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:prodlike": "playwright test -c playwright.prodlike.config.ts",
+    "check:deploy": "node scripts/check-deployment.mjs",
+    "serve:dist": "node scripts/serve-dist.mjs",
     "generate-pwa-assets": "npx @vite-pwa/assets-generator --preset minimal-2023 public/icon.svg",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local --schema public > src/data/remote/database.types.ts && npx --yes oxfmt src/data/remote/database.types.ts",
     "test:db": "vitest run --config vitest.db.config.ts",
-    "env:local": "node scripts/write-env-local.mjs"
+    "env:local": "node scripts/write-env-local.mjs",
+    "db:backup": "node scripts/backup-db.mjs",
+    "prod:config": "node scripts/production-config.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

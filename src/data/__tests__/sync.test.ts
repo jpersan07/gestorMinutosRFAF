@@ -54,6 +54,7 @@ describe('clasificación de respuestas del servidor', () => {
     expect(classifyEventRejection('CONTROL_CHANGED')).toBe('control-lost')
     expect(classifyEventRejection('RESULT_REQUIRED')).toBe('needs-report')
     expect(classifyEventRejection('SEQ_GAP')).toBe('retry')
+    expect(classifyEventRejection('EVENT_IN_FUTURE')).toBe('retry')
     expect(classifyEventRejection('INVALID_MATCH_SECOND')).toBe('invalid')
     expect(classifyEventRejection('PLAYER_NOT_ON_FIELD')).toBe('invalid')
   })

@@ -30,3 +30,9 @@ coverage
 
 # Informes de Vitest
 .vitest
+
+# Copias de la base de datos (contienen datos personales): SIEMPRE fuera del repositorio.
+# (scripts/backup-db.mjs ya se niega a guardarlas aquí; esto es una segunda barrera.)
+copias*/
+backups/
+*.dump

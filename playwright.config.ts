@@ -5,7 +5,7 @@ import { execSync } from 'node:child_process'
  * La app se compila contra el Supabase LOCAL (npm run db:start). La URL y la clave PUBLISHABLE
  * se leen en tiempo de ejecución de `supabase status`: no hay claves en el repositorio.
  */
-function localSupabaseEnv(): Record<string, string> {
+export function localSupabaseEnv(): Record<string, string> {
   try {
     const raw = execSync('npx supabase status -o json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
     const status = JSON.parse(raw.slice(raw.indexOf('{'))) as Record<string, string | undefined>
@@ -20,6 +20,10 @@ function localSupabaseEnv(): Record<string, string> {
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
+  // Las pruebas "como en producción" (cabeceras de Vercel) tienen su propia configuración.
+  testIgnore: 'prodlike/**',
   use: { baseURL: 'http://localhost:4173' },
   projects: [{ name: 'mobile-chrome', use: { ...devices['Pixel 7'] } }],
   webServer: {

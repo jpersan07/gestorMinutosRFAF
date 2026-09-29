@@ -1,0 +1,41 @@
+# Integración continua (D-E7): en cada push a main y en cada pull request.
+# Sin secretos: no se conecta a Supabase ni a Vercel. Las pruebas que necesitan el Supabase local
+# con Docker (npm run test:db, npm run test:e2e, npm run test:e2e:prodlike) se ejecutan en local
+# antes de cada push (ver README).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Tests unitarios, tipos, lint y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      # El build de CI no lleva variables de Supabase: comprueba igualmente que no se cuela
+      # ninguna clave secreta en el código publicado.
+      - name: Sin claves secretas en dist
+        run: |
+          if grep -rEl 'sb_secret_[A-Za-z0-9_-]{16,}' dist; then
+            echo "Hay una clave secreta en el código publicado" && exit 1
+          fi

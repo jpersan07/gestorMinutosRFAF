@@ -137,20 +137,26 @@ test('CERRAR SESIÓN con cambios pendientes: se avisa, se puede cancelar y nunca
   await context.setOffline(false)
   await fillLogin(page, coach.email, coach.password)
   await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
+  // Lo que se conservó sin conexión llega al servidor al volver a entrar.
+  await expect.poll(() => serverPlayers(coach.teamId)).toEqual([{ name: 'Pendiente', number: 5 }])
   await expect(syncStatus(page)).toHaveText('✓ Sincronizado')
-  expect(await serverPlayers(coach.teamId)).toEqual([{ name: 'Pendiente', number: 5 }])
 })
 
-test('conflicto de dorsal: el servidor decide y se avisa en el jugador (C-1)', async ({ page }) => {
+test('conflicto de dorsal: el servidor decide y se avisa en el jugador (C-1)', async ({ page, context }) => {
   const coach = (await login(page))!
-  // Otro móvil ya subió un jugador activo con el dorsal 9.
+  await installOffline(page)
+  // Este móvil, sin conexión (no puede saber nada del otro), da de alta el dorsal 9…
+  await context.setOffline(true)
+  await page.getByRole('link', { name: 'JUGADORES' }).click()
+  await addPlayer(page, 'Nueve de este móvil', 9)
+  // …mientras otro móvil ya subió un jugador activo con el dorsal 9.
   const inserted = await serverAdmin
     .from('players')
     .insert({ id: crypto.randomUUID(), team_id: coach.teamId, name: 'Nueve del otro móvil', number: 9 })
   expect(inserted.error).toBeNull()
 
-  await page.getByRole('link', { name: 'JUGADORES' }).click()
-  await addPlayer(page, 'Nueve de este móvil', 9)
+  // Al volver la conexión, el servidor decide.
+  await context.setOffline(false)
   await expect(page.getByRole('alert')).toHaveText(
     'No se pudo guardar el jugador Nueve de este móvil (9): el dorsal ya está utilizado por otro jugador en el servidor. Cambia el dorsal para volver a intentarlo.',
   )

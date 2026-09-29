@@ -1,6 +1,6 @@
 # Plan Fase 3 — Supabase: acceso, base de datos compartida y sincronización
 
-Estado: **APROBADO** — decisiones F3-1…F3-7 resueltas (§11). Bloques **3a** (servidor y seguridad), **3b** (acceso), **3c** (subida) y **3d** (descarga y TOMAR CONTROL) implementados; 3e pendiente.
+Estado: **APROBADO** — decisiones F3-1…F3-7 resueltas (§11). Bloques **3a** (servidor y seguridad), **3b** (acceso), **3c** (subida) y **3d** (descarga y TOMAR CONTROL) y **3e.1** (preparación de producción) implementados; 3e.2 pendiente.
 
 Objetivo: que varios móviles compartan jugadores, partidos y resultados **sin perder la regla de oro de la Fase 2**: durante el partido la app funciona igual con o sin Internet. La interfaz sigue hablando solo con IndexedDB (Dexie); Supabase es persistencia y sincronización compartida, **no** el motor del partido.
 
@@ -155,7 +155,8 @@ INICIAR SESIÓN, aviso de descarte de datos de prueba, banner SIN CONEXIÓN, ind
 | 3b | Cuentas individuales: INICIAR SESIÓN, sesión persistente (también sin conexión), recuperación de contraseña, elegir equipo, descarte de datos de prueba, CERRAR SESIÓN; equipo/temporada/perfiles desde el servidor; Dexie v2 (ver `PLAN_3B.md`) | hecho |
 | 3c | Subida offline-first (orden fijo, idempotente, exclusión mutua), aviso sin conexión, indicador, conflictos C-1/C-2, cuarentena y CONTROL PERDIDO, errores técnicos (ver `PLAN_3C.md`) | hecho |
 | 3d | Descarga + fusión (eventos solo se añaden; editables "gana el último" como el servidor), TOMAR CONTROL atómico (`take_match_control`), historial sin huecos, reloj del servidor, modo consulta, CONTROL PERDIDO con estado oficial y ENTENDIDO (ver `PLAN_3D.md`) | hecho |
-| 3e | E2E multi-dispositivo; despliegue en Vercel (HTTPS); guía de puesta en marcha | pendiente |
+| 3e.1 | Preparación de producción en el repositorio: `vercel.json` y cabeceras (CSP), separación de entornos, CI, horas futuras en el servidor, plantillas de administración, copias, guía (ver `PLAN_3E.md`) | hecho |
+| 3e.2 | Puesta en marcha real: Supabase y Vercel, SMTP, primera publicación y comprobación en móviles | pendiente |
 
 ---
 

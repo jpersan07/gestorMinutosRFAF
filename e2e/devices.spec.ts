@@ -12,7 +12,7 @@ const matchIdFrom = (page: Page) => /\/partidos\/([^/]+)/.exec(page.url())?.[1] 
 /** Otro móvil: navegador nuevo con la cuenta de otro entrenador del mismo equipo. */
 async function secondPhone(browser: Browser, teamId: string) {
   const coach: TestCoach = await addCoachToTeam(teamId)
-  const context = await browser.newContext({ ...devices['Pixel 7'], baseURL: 'http://localhost:4173' })
+  const context = await browser.newContext({ ...devices['Pixel 7'], baseURL: test.info().project.use.baseURL })
   const page = await context.newPage()
   await page.goto('/')
   await fillLogin(page, coach.email, coach.password)

@@ -13,6 +13,8 @@ interface LocalEnv {
   readonly url: string
   readonly anonKey: string
   readonly serviceKey: string
+  /** Conexión directa a la base de datos LOCAL (credenciales por defecto del Supabase local). */
+  readonly dbUrl: string
 }
 
 function readLocalEnv(): LocalEnv {
@@ -21,8 +23,9 @@ function readLocalEnv(): LocalEnv {
   const url = status.API_URL
   const anonKey = status.PUBLISHABLE_KEY ?? status.ANON_KEY
   const serviceKey = status.SERVICE_ROLE_KEY ?? status.SECRET_KEY
-  if (!url || !anonKey || !serviceKey) throw new Error('Supabase local no está en marcha: npm run db:start')
-  return { url, anonKey, serviceKey }
+  const dbUrl = status.DB_URL
+  if (!url || !anonKey || !serviceKey || !dbUrl) throw new Error('Supabase local no está en marcha: npm run db:start')
+  return { url, anonKey, serviceKey, dbUrl }
 }
 
 export const env = readLocalEnv()

@@ -35,7 +35,9 @@ const crestDataUrl = `data:image/png;base64,${readFileSync('public/pwa-64x64.png
 /** Un "móvil": su propia base de datos local, la cuenta del entrenador y su reloj. */
 async function phone(user: TestUser, team: TestTeam) {
   const db = new AppDatabase(`phone-${randomUUID()}`)
-  const clock = { time: Date.now() }
+  // El partido se jugó hace unas horas (se simula avanzando este reloj): así ningún evento queda
+  // en el futuro respecto a la hora del servidor (EVENT_IN_FUTURE, 3e.1).
+  const clock = { time: Date.now() - 3 * 3600_000 }
   const dataEnv = { now: () => clock.time, newId: () => randomUUID() }
   await getDeviceId(db, dataEnv)
   const context = await loadTeamContext(user.client, team.teamId)
