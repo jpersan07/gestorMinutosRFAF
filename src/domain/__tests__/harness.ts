@@ -58,9 +58,12 @@ export class MatchHarness {
   squad: Id[] = [...SQUAD]
   private nextId = 0
   readonly matchId: Id
+  private readonly idFactory: (() => Id) | null
 
-  constructor(matchId: Id = 'match-1') {
+  /** `idFactory`: por defecto ids legibles ('id-1'…); los tests de servidor pasan UUIDs reales. */
+  constructor(matchId: Id = 'match-1', idFactory: (() => Id) | null = null) {
     this.matchId = matchId
+    this.idFactory = idFactory
     this.state = initialMatchState(matchId)
   }
 
@@ -70,7 +73,7 @@ export class MatchHarness {
       deviceId: this.deviceId,
       coachId: this.coachId,
       squad: this.squad,
-      newId: () => `id-${++this.nextId}`,
+      newId: () => this.idFactory?.() ?? `id-${++this.nextId}`,
       ...overrides,
     }
   }

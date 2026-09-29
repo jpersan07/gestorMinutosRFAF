@@ -12,9 +12,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "generate-pwa-assets": "npx @vite-pwa/assets-generator --preset minimal-2023 public/icon.svg"
+    "generate-pwa-assets": "npx @vite-pwa/assets-generator --preset minimal-2023 public/icon.svg",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local --schema public > src/data/remote/database.types.ts && npx --yes oxfmt src/data/remote/database.types.ts",
+    "test:db": "vitest run --config vitest.db.config.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
     "react": "^19.2.8",
@@ -30,6 +36,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "fake-indexeddb": "^6.2.5",
     "oxlint": "^1.81.0",
+    "supabase": "^2.118.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
