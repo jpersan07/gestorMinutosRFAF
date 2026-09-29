@@ -14,7 +14,7 @@ export function TakeControl({ view }: { view: MatchView }) {
   const { run, busy } = useAction()
   const [asking, setAsking] = useState(false)
   const manager = useLiveQuery(
-    async () => (view.match.managedBy ? await db.coaches.get(view.match.managedBy) : undefined),
+    async () => (view.match.managedBy ? await db.profiles.get(view.match.managedBy) : undefined),
     [db, view.match.managedBy],
   )
 
@@ -22,7 +22,7 @@ export function TakeControl({ view }: { view: MatchView }) {
     <Page title="PARTIDO" back={`/partidos/${view.match.id}`}>
       <div className="flex flex-col gap-4 rounded-2xl bg-panel p-5">
         <p className="text-lg font-bold">
-          Este partido lo está gestionando otro dispositivo{manager ? ` (${manager.name})` : ''}.
+          Este partido lo está gestionando otro dispositivo{manager ? ` (${manager.displayName})` : ''}.
         </p>
         <p className="text-muted">Puedes tomar el control para seguir gestionándolo desde este móvil.</p>
         <Button onClick={() => setAsking(true)}>TOMAR CONTROL</Button>

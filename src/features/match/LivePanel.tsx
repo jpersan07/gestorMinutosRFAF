@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useMatchDispatch, type MatchView } from '../../app/match/useMatch'
+import { SessionLostNotice } from '../../app/routing/SessionLostBanner'
 import { errorMessage } from '../../app/messages'
 import { useAction } from '../../app/useAction'
 import type { PlayerRecord } from '../../data'
@@ -88,6 +89,7 @@ export function LivePanel({ view, now }: { view: MatchView; now: number }) {
       </div>
 
       <footer className="flex flex-col gap-2 [grid-area:bottom] landscape:justify-end">
+        <SessionLostNotice />
         {(error ?? unexpected) && (
           <p role="alert" className="rounded-xl bg-danger px-3 py-2 font-bold text-danger-ink">
             {error ?? unexpected}

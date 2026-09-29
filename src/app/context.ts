@@ -2,13 +2,13 @@ import { createContext, useContext } from 'react'
 import type { AppDatabase, AppScope, DataEnv } from '../data'
 import type { Id } from '../domain'
 
+/** Contexto de las pantallas de la app (solo existe con una cuenta y un equipo activos). */
 export interface AppContextValue {
   readonly db: AppDatabase
   readonly env: DataEnv
   readonly scope: AppScope
-  /** Entrenador seleccionado en este dispositivo ("¿QUIÉN ERES?"). */
-  readonly coachId: Id | null
-  readonly selectCoach: (coachId: Id | null) => Promise<void>
+  /** El entrenador es el usuario autenticado (Supabase Auth). */
+  readonly coachId: Id
 }
 
 export const AppContext = createContext<AppContextValue | null>(null)
@@ -19,9 +19,6 @@ export function useApp(): AppContextValue {
   return value
 }
 
-/** Para pantallas protegidas por RequireCoach: siempre hay entrenador. */
 export function useCoachId(): Id {
-  const { coachId } = useApp()
-  if (!coachId) throw new Error('No hay entrenador seleccionado')
-  return coachId
+  return useApp().coachId
 }

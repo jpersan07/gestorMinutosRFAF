@@ -14,23 +14,36 @@ interface Tracked {
   readonly syncState: SyncState
 }
 
-export interface TeamRecord extends Tracked {
+// ---- Datos del servidor (solo lectura en el móvil) ----
+
+export interface TeamRecord {
   readonly id: Id
   readonly name: string
+  readonly currentSeasonId: Id | null
+  readonly updatedAt: EpochMs
 }
 
-export interface SeasonRecord extends Tracked {
+export interface SeasonRecord {
   readonly id: Id
   readonly teamId: Id
   /** '2026-27' */
   readonly name: string
+  readonly updatedAt: EpochMs
 }
 
-export interface CoachRecord extends Tracked {
+/** Perfil de una cuenta de entrenador (Supabase Auth). El id es el del usuario. */
+export interface ProfileRecord {
   readonly id: Id
+  readonly displayName: string
+  readonly updatedAt: EpochMs
+}
+
+export type TeamRole = 'admin' | 'coach'
+
+export interface TeamMemberRecord {
   readonly teamId: Id
-  readonly name: string
-  readonly active: boolean
+  readonly userId: Id
+  readonly role: TeamRole
 }
 
 /** Jugador del equipo. `active` = en la plantilla actual (las bajas no se borran: tienen historial). */
@@ -120,7 +133,8 @@ export class AppDatabase extends Dexie {
   declare meta: Table<MetaRecord, string>
   declare teams: Table<TeamRecord, Id>
   declare seasons: Table<SeasonRecord, Id>
-  declare coaches: Table<CoachRecord, Id>
+  declare profiles: Table<ProfileRecord, Id>
+  declare teamMembers: Table<TeamMemberRecord, [Id, Id]>
   declare players: Table<PlayerRecord, Id>
   declare matches: Table<MatchRecord, Id>
   declare matchSquads: Table<MatchSquadRecord, Id>
@@ -148,6 +162,14 @@ export class AppDatabase extends Dexie {
       playerMatchMinutes: '[matchId+playerId], matchId, playerId',
       crests: 'id',
       errorLog: '++id, createdAt',
+    })
+    // v2 (Fase 3b): la identidad viene de Supabase Auth. Los entrenadores locales se sustituyen
+    // por perfiles y miembros del equipo descargados del servidor. No se borra ningún dato aquí:
+    // el descarte de los datos de prueba lo decide el entrenador al iniciar sesión.
+    this.version(2).stores({
+      coaches: null,
+      profiles: 'id',
+      teamMembers: '[teamId+userId], teamId, userId',
     })
   }
 }

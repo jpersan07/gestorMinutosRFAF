@@ -1,6 +1,6 @@
 # Plan Fase 3 — Supabase: acceso, base de datos compartida y sincronización
 
-Estado: **APROBADO** — decisiones F3-1…F3-7 resueltas (§11). Bloque **3a** (servidor y seguridad) implementado; 3b–3e pendientes.
+Estado: **APROBADO** — decisiones F3-1…F3-7 resueltas (§11). Bloques **3a** (servidor y seguridad) y **3b** (acceso) implementados; 3c–3e pendientes.
 
 Objetivo: que varios móviles compartan jugadores, partidos y resultados **sin perder la regla de oro de la Fase 2**: durante el partido la app funciona igual con o sin Internet. La interfaz sigue hablando solo con IndexedDB (Dexie); Supabase es persistencia y sincronización compartida, **no** el motor del partido.
 
@@ -152,7 +152,7 @@ INICIAR SESIÓN, aviso de descarte de datos de prueba, banner SIN CONEXIÓN, ind
 | Bloque | Contenido | Estado |
 |---|---|---|
 | 3a | Supabase local, migraciones, RLS, bloqueos, guardián de eventos, control único, Storage, seed de prueba, tipos generados, tests de base de datos | hecho |
-| 3b | Cliente Supabase y `.env`, INICIAR SESIÓN, sesión persistente, cerrar sesión, descarte de datos de prueba; equipo/temporada/perfiles desde el servidor; Dexie v2 | pendiente |
+| 3b | Cuentas individuales: INICIAR SESIÓN, sesión persistente (también sin conexión), recuperación de contraseña, elegir equipo, descarte de datos de prueba, CERRAR SESIÓN; equipo/temporada/perfiles desde el servidor; Dexie v2 (ver `PLAN_3B.md`) | hecho |
 | 3c | Subida + banner sin conexión + indicador + logs | pendiente |
 | 3d | Descarga + fusión + TOMAR CONTROL entre dispositivos + aviso de control perdido | pendiente |
 | 3e | E2E multi-dispositivo; despliegue en Vercel (HTTPS); guía de puesta en marcha | pendiente |

@@ -1,49 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bootstrap,
   createMatch,
   createPlayer,
-  getSelectedCoachId,
-  INITIAL_COACHES,
   listMatches,
   listPlayers,
-  setSelectedCoachId,
   sortMatches,
   updateMatchDetails,
   updatePlayer,
   type MatchRecord,
 } from '..'
-import { fixture, openTestDb, reopen, TestEnv } from './testDb'
-
-describe('arranque', () => {
-  it('crea dispositivo, equipo, temporada actual y los tres entrenadores', async () => {
-    const db = openTestDb()
-    const scope = await bootstrap(db, new TestEnv(), '2026-09-28')
-    expect(scope.deviceId).toBeTruthy()
-    expect((await db.seasons.get(scope.seasonId))?.name).toBe('2026-27')
-    expect((await db.coaches.toArray()).map((c) => c.name)).toEqual([...INITIAL_COACHES])
-    expect(await db.players.count()).toBe(0)
-    expect(await db.matches.count()).toBe(0)
-  })
-
-  it('es idempotente: al reabrir la app devuelve los mismos ids y no duplica nada', async () => {
-    const db = openTestDb()
-    const first = await bootstrap(db, new TestEnv(), '2026-09-28')
-    const again = reopen(db)
-    const second = await bootstrap(again, new TestEnv(), '2027-03-01')
-    expect(second).toEqual(first)
-    expect(await again.coaches.count()).toBe(3)
-    expect(await again.teams.count()).toBe(1)
-  })
-
-  it('recuerda el entrenador seleccionado tras cerrar la app', async () => {
-    const db = openTestDb()
-    await bootstrap(db, new TestEnv(), '2026-09-28')
-    const coach = (await db.coaches.toArray())[1]!
-    await setSelectedCoachId(db, coach.id)
-    expect(await getSelectedCoachId(reopen(db))).toBe(coach.id)
-  })
-})
+import { fixture } from './testDb'
 
 describe('jugadores', () => {
   it('AÑADIR JUGADOR con nombre y dorsal lo deja activo en el equipo', async () => {

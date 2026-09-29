@@ -2,7 +2,7 @@ import { afterEach } from 'vitest'
 import { FORMATIONS, type FormationId, type Id, type Lineup } from '../../domain'
 import { AppDatabase } from '../db'
 import type { DataEnv } from '../env'
-import { bootstrap, type AppScope } from '../repositories/bootstrap'
+import { applyTeamContext, type AppScope } from '../repositories/account'
 import { createMatch } from '../repositories/matches'
 import { createPlayer } from '../repositories/players'
 
@@ -53,12 +53,22 @@ export interface Fixture {
   matchId: Id
 }
 
-/** Equipo con 16 jugadores y un partido pendiente. */
+/** Contexto de equipo como el que descargaría la app del servidor (ids de prueba). */
+export const TEST_TEAM_CONTEXT = {
+  team: { id: 'team-1', name: 'Equipo de prueba', currentSeasonId: 'season-1' },
+  season: { id: 'season-1', name: '2026-27' },
+  members: [
+    { userId: 'user-isaac', displayName: 'ISAAC', role: 'admin' as const },
+    { userId: 'user-jordi', displayName: 'JORDI', role: 'coach' as const },
+  ],
+}
+
+/** Equipo con 16 jugadores y un partido pendiente; sesión de ISAAC. */
 export async function fixture(): Promise<Fixture> {
   const db = openTestDb()
   const env = new TestEnv()
-  const scope = await bootstrap(db, env, '2026-09-28')
-  const coachId = (await db.coaches.toArray())[0]!.id
+  const scope = await applyTeamContext(db, env, 'user-isaac', TEST_TEAM_CONTEXT)
+  const coachId = scope.userId
   const playerIds: Id[] = []
   for (let number = 1; number <= 16; number++) {
     const result = await createPlayer(db, env, scope.teamId, { name: `Jugador ${number}`, number })

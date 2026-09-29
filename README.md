@@ -5,13 +5,26 @@ PWA para gestionar alineaciones, cambios y minutos de los jugadores durante los 
 - Requisitos: `docs/PRD.md`
 - Arquitectura y decisiones: `docs/PLAN_TECNICO.md`
 
+## Desarrollo local (Supabase)
+
+Requiere Docker (Docker Desktop).
+
+1. `npm run db:start` — arranca Supabase local y aplica migraciones y seed (datos DEMO).
+2. `npm run env:local` — escribe `.env.local` con la URL y la clave **publishable** locales.
+3. `npm run dev` — la app; entra con una cuenta DEMO del seed (`isaac.demo@demo.local`, contraseña `demo-local-2026`; ver `supabase/seed.sql`).
+4. Correos locales (recuperación de contraseña): Mailpit en http://127.0.0.1:54324.
+
 ## Scripts
 
 | Comando | Qué hace |
 |---|---|
 | `npm run dev` | Servidor de desarrollo |
 | `npm test` | Tests unitarios (Vitest) |
-| `npm run test:e2e` | Tests E2E (Playwright; la primera vez: `npx playwright install chromium`) |
+| `npm run test:e2e` | Tests E2E (Playwright, contra Supabase local; la primera vez: `npx playwright install chromium`) |
+| `npm run test:db` | Tests de base de datos (RLS, validación de eventos, Storage…) contra Supabase local |
+| `npm run db:start` / `db:stop` / `db:reset` | Supabase local (Docker) |
+| `npm run db:types` | Regenera `src/data/remote/database.types.ts` desde el esquema |
+| `npm run env:local` | Escribe `.env.local` desde el Supabase local |
 | `npm run typecheck` | Comprobación de tipos (incluye el dominio sin APIs del navegador) |
 | `npm run lint` | Lint (oxlint) |
 | `npm run build` | Build de producción + service worker |

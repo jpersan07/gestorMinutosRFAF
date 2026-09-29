@@ -1,17 +1,17 @@
 import { expect, test } from '@playwright/test'
-import { addPlayer, chooseCoach } from './helpers.ts'
+import { addPlayer, login } from './helpers.ts'
 
-test('el entrenador queda recordado tras recargar', async ({ page }) => {
-  await chooseCoach(page, 'JORDI')
-  await expect(page.getByText('JORDI')).toBeVisible()
+test('la sesión se mantiene tras recargar y muestra el entrenador y su equipo', async ({ page }) => {
+  await login(page, 'jordi')
+  await expect(page.getByText('JORDI DEMO · Equipo DEMO')).toBeVisible()
   await page.reload()
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
-  await expect(page.getByText('JORDI')).toBeVisible()
+  await expect(page.getByText('JORDI DEMO · Equipo DEMO')).toBeVisible()
 })
 
 test('AÑADIR JUGADOR, validaciones, editar y dar de baja', async ({ page }) => {
-  await chooseCoach(page)
+  await login(page)
   await page.getByRole('link', { name: 'JUGADORES' }).click()
   await expect(page.getByText('Todavía no hay jugadores')).toBeVisible()
 

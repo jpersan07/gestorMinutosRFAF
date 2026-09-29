@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMatchDispatch, type MatchView } from '../../app/match/useMatch'
+import { SessionLostNotice } from '../../app/routing/SessionLostBanner'
 import { errorMessage } from '../../app/messages'
 import { useAction } from '../../app/useAction'
 import { secondHalfAvailableAt } from '../../domain'
@@ -46,6 +47,7 @@ export function HalftimePanel({ view, now }: { view: MatchView; now: number }) {
 
   return (
     <Page title="DESCANSO" back={`/partidos/${view.match.id}`}>
+      <SessionLostNotice />
       <section className="flex flex-col items-center gap-1 rounded-2xl bg-panel p-4 text-center">
         <p className="text-lg font-black uppercase">{view.match.opponent}</p>
         <p className="tabular text-5xl font-black">45:00</p>

@@ -1,8 +1,25 @@
 import { expect, type Page } from '@playwright/test'
 
-export async function chooseCoach(page: Page, name = 'ISAAC') {
+/** Cuentas DEMO del seed local (supabase/seed.sql). Solo existen en el Supabase local. */
+export const DEMO_PASSWORD = 'demo-local-2026'
+export const DEMO_USERS = {
+  isaac: 'isaac.demo@demo.local',
+  jordi: 'jordi.demo@demo.local',
+  jose: 'jose.demo@demo.local',
+  otro: 'otro.demo@demo.local',
+} as const
+
+export async function fillLogin(page: Page, email: string, password: string) {
+  await expect(page.getByRole('heading', { name: 'INICIAR SESIÓN' })).toBeVisible()
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Contraseña').fill(password)
+  await page.getByRole('button', { name: 'ENTRAR' }).click()
+}
+
+/** Inicia sesión con una cuenta DEMO y espera a la lista de partidos. */
+export async function login(page: Page, user: keyof typeof DEMO_USERS = 'isaac') {
   await page.goto('/')
-  await page.getByRole('button', { name, exact: true }).click()
+  await fillLogin(page, DEMO_USERS[user], DEMO_PASSWORD)
   await expect(page.getByRole('heading', { name: 'PARTIDOS' })).toBeVisible()
 }
 
@@ -53,7 +70,7 @@ export async function fillNextSlot(page: Page, n: number) {
 
 /** Equipo de `players` jugadores, un partido, convocatoria completa y alineación 4-3-3 confirmada. */
 export async function prepareMatch(page: Page, opponent = 'CD Málaga', players = 14) {
-  await chooseCoach(page)
+  await login(page)
   await addPlayers(page, players)
   await createMatch(page, { opponent })
   await page.getByRole('link', { name: new RegExp(opponent) }).click()
@@ -72,4 +89,38 @@ export async function substitute(page: Page, slot: string, outName: string, inNa
   await expect(page.getByRole('dialog', { name: '¿Confirmar cambio?' })).toBeVisible()
   await page.getByRole('button', { name: 'CONFIRMAR' }).click()
   await expect(page.getByRole('button', { name: `${slot}: ${inName}` })).toBeVisible()
+}
+
+/**
+ * Espera a que el borrador de alineación que contiene a ese jugador esté ESCRITO en IndexedDB.
+ * (Una recarga a los pocos milisegundos de un toque cancela la escritura en curso; lo que la app
+ * garantiza es que lo ya guardado sobrevive a una recarga.)
+ */
+export async function waitForDraftWith(page: Page, name: string) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (playerName) =>
+          new Promise<boolean>((resolve) => {
+            const request = indexedDB.open('gestor-minutos')
+            request.onsuccess = () => {
+              const db = request.result
+              const tx = db.transaction(['players', 'lineupDrafts'], 'readonly')
+              const players = tx.objectStore('players').getAll()
+              const drafts = tx.objectStore('lineupDrafts').getAll()
+              tx.oncomplete = () => {
+                const id = (players.result as Array<{ id: string; name: string }>).find((p) => p.name === playerName)?.id
+                const found = (drafts.result as Array<{ lineup: { slots: Record<string, string> } }>).some(
+                  (d) => id !== undefined && Object.values(d.lineup.slots).includes(id),
+                )
+                db.close()
+                resolve(found)
+              }
+            }
+            request.onerror = () => resolve(false)
+          }),
+        name,
+      ),
+    )
+    .toBe(true)
 }

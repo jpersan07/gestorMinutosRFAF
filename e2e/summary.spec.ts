@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { playerName as p, prepareMatch, substitute } from './helpers.ts'
 
 test('resumen, informe con RESULTADO obligatorio, doble confirmación y solo lectura', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await page.clock.install()
   await prepareMatch(page, 'CD Málaga')
   await page.getByRole('button', { name: '▶ COMENZAR' }).click()
   await expect(page.getByRole('timer')).toBeVisible()

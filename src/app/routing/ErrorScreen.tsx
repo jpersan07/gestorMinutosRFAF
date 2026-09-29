@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { Link, useRouteError } from 'react-router'
 import { logError } from '../../data'
-import { useApp } from '../context'
+import { useAuth } from '../auth/AuthContext'
 
 /** Pantalla ante un error inesperado de la interfaz: mensaje claro, error técnico al log. */
 export function ErrorScreen() {
   const error = useRouteError()
-  const { db } = useApp()
+  const { db } = useAuth()
 
   useEffect(() => {
     void logError(db, error, { at: 'route', path: window.location.pathname })

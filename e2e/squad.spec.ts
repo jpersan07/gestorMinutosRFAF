@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { addPlayer, chooseCoach, createMatch } from './helpers.ts'
+import { addPlayer, login, createMatch } from './helpers.ts'
 
 test('CONVOCATORIA: convocar a todos, quitar, guardar y enviar por WhatsApp', async ({ page, context }) => {
   await context.route('https://wa.me/**', (route) => route.fulfill({ body: 'whatsapp' }))
-  await chooseCoach(page)
+  await login(page)
   await page.getByRole('link', { name: 'JUGADORES' }).click()
   await addPlayer(page, 'Pedro', 9)
   await addPlayer(page, 'Álvaro', 4)

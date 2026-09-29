@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router'
+import { useAuth } from '../../app/auth/AuthContext'
 import { useApp, useCoachId } from '../../app/context'
 import { useAction } from '../../app/useAction'
 import { useCrest } from '../../app/useCrest'
 import { listMatches, type MatchRecord } from '../../data'
 import { loadDemoData } from '../../data/demo'
 import { Button } from '../../ui/Button'
+import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { Crest } from '../../ui/Crest'
 import { Page } from '../../ui/Page'
 import { StatusBadge } from '../../ui/StatusBadge'
@@ -34,11 +37,14 @@ function MatchCard({ match }: { match: MatchRecord }) {
 }
 
 export function MatchesPage() {
-  const { db, env, scope, selectCoach } = useApp()
+  const { db, env, scope } = useApp()
+  const { signOut } = useAuth()
   const coachId = useCoachId()
   const navigate = useNavigate()
   const { run } = useAction()
-  const coach = useLiveQuery(() => db.coaches.get(coachId), [db, coachId])
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const profile = useLiveQuery(() => db.profiles.get(coachId), [db, coachId])
+  const team = useLiveQuery(() => db.teams.get(scope.teamId), [db, scope.teamId])
   const matches = useLiveQuery(() => listMatches(db, scope.seasonId), [db, scope.seasonId])
 
   return (
@@ -50,21 +56,32 @@ export function MatchesPage() {
         </Link>
       }
     >
-      <div className="flex items-center justify-between text-sm text-muted">
-        <span>
-          Entrenador: <strong className="text-line">{coach?.name}</strong>
+      <div className="flex items-center justify-between gap-3 text-sm text-muted">
+        <span className="min-w-0 truncate">
+          <strong className="text-line">{profile?.displayName}</strong>
+          {team ? ` · ${team.name}` : ''}
         </span>
         <button
           type="button"
-          className="min-h-11 px-2 font-bold underline"
-          onClick={async () => {
-            await selectCoach(null)
-            navigate('/quien', { replace: true })
-          }}
+          className="min-h-11 shrink-0 px-2 font-bold underline"
+          onClick={() => setConfirmSignOut(true)}
         >
-          Cambiar
+          CERRAR SESIÓN
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="¿Cerrar sesión?"
+        confirmLabel="CERRAR SESIÓN"
+        onCancel={() => setConfirmSignOut(false)}
+        onConfirm={() => {
+          setConfirmSignOut(false)
+          void signOut()
+        }}
+      >
+        <p>Los datos de este móvil se conservan y volverán a estar disponibles al entrar con tu cuenta.</p>
+      </ConfirmDialog>
 
       <Button onClick={() => navigate('/partidos/nuevo')}>+ NUEVO PARTIDO</Button>
 

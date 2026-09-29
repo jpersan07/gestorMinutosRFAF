@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test'
-import { addPlayers, createMatch, fillNextSlot, playerName as p, substitute } from './helpers.ts'
+import { addPlayers, createMatch, fillNextSlot, login, playerName as p, substitute } from './helpers.ts'
 
 // Criterios de aceptación del PRD §37, paso a paso (reloj simulado).
 test('flujo completo del PRD §37', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await page.clock.install()
   const timer = page.getByRole('timer', { name: 'Cronómetro' })
 
-  // 1. Abrir aplicación · 2. Seleccionar ISAAC
-  await page.goto('/')
-  await page.getByRole('button', { name: 'ISAAC', exact: true }).click()
+  // 1. Abrir aplicación · 2. Entrar como ISAAC (cuenta individual, Fase 3)
+  await login(page, 'isaac')
+  await expect(page.getByText('ISAAC DEMO')).toBeVisible()
   // (datos previos: plantilla y dos partidos)
   await addPlayers(page, 15)
   await createMatch(page, { opponent: 'CD Málaga', date: '2026-10-10', time: '18:00' })

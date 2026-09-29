@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { chooseCoach, createMatch } from './helpers.ts'
+import { login, createMatch } from './helpers.ts'
 
 test('NUEVO PARTIDO: solo el rival es obligatorio; la lista se ordena por fecha', async ({ page }) => {
-  await chooseCoach(page)
+  await login(page)
   await expect(page.getByText('Todavía no hay partidos')).toBeVisible()
 
   await page.getByRole('button', { name: '+ NUEVO PARTIDO' }).click()
@@ -35,7 +35,7 @@ test('NUEVO PARTIDO: solo el rival es obligatorio; la lista se ordena por fecha'
 })
 
 test('el escudo se puede elegir al crear el partido', async ({ page }) => {
-  await chooseCoach(page)
+  await login(page)
   await page.getByRole('button', { name: '+ NUEVO PARTIDO' }).click()
   await page.getByLabel('Club / equipo rival').fill('Rival con escudo')
   await page.getByLabel('Imagen del escudo').setInputFiles('public/pwa-192x192.png')
@@ -45,7 +45,7 @@ test('el escudo se puede elegir al crear el partido', async ({ page }) => {
 })
 
 test('EDITAR completa los datos, cambia y quita el escudo', async ({ page }) => {
-  await chooseCoach(page)
+  await login(page)
   await createMatch(page, { opponent: 'Rival provisional' })
   await page.getByRole('link', { name: /Rival provisional/ }).click()
 

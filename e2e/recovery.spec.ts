@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { playerName as p, prepareMatch, substitute } from './helpers.ts'
+import { playerName as p, prepareMatch, substitute, waitForDraftWith } from './helpers.ts'
 
 const timer = (page: Page) => page.getByRole('timer', { name: 'Cronómetro' })
 
@@ -10,7 +10,7 @@ async function kickOff(page: Page) {
 }
 
 test('cerrar la app en la 1ª parte y volver a abrirla: reabre el partido con el reloj correcto', async ({ context }) => {
-  await context.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await context.clock.install()
   const page = await context.newPage()
   await kickOff(page)
   await page.clock.fastForward('12:10')
@@ -27,7 +27,7 @@ test('cerrar la app en la 1ª parte y volver a abrirla: reabre el partido con el
 })
 
 test('teléfono bloqueado durante el final de la 1ª parte: al volver, descanso y 2ª parte disponible', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await page.clock.install()
   await kickOff(page)
   await page.clock.fastForward('40:00')
   await expect(timer(page)).toHaveText(/^40:0\d$/)
@@ -44,13 +44,14 @@ test('teléfono bloqueado durante el final de la 1ª parte: al volver, descanso 
 })
 
 test('recarga en el descanso mientras se prepara la 2ª parte: el borrador se conserva', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await page.clock.install()
   await kickOff(page)
   await page.clock.fastForward('45:00')
   await page.getByRole('button', { name: 'CONFIGURAR 2ª PARTE' }).click()
   await page.getByRole('button', { name: `ED: ${p(11)}` }).click()
   await page.getByRole('dialog').getByRole('button', { name: new RegExp(p(13)) }).click()
   await expect(page.getByRole('button', { name: `ED: ${p(13)}` })).toBeVisible()
+  await waitForDraftWith(page, p(13))
 
   await page.reload()
   await expect(page.getByRole('heading', { name: 'DESCANSO' })).toBeVisible()
@@ -59,7 +60,7 @@ test('recarga en el descanso mientras se prepara la 2ª parte: el borrador se co
 })
 
 test('app cerrada en la 2ª parte y reabierta después del 90: partido finalizado con los minutos exactos', async ({ context }) => {
-  await context.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await context.clock.install()
   const page = await context.newPage()
   await kickOff(page)
   await page.clock.fastForward('45:00')
@@ -83,7 +84,7 @@ test('app cerrada en la 2ª parte y reabierta después del 90: partido finalizad
 })
 
 test('sin conexión: el partido sigue funcionando y guardando', async ({ page, context }) => {
-  await page.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await page.clock.install()
   await kickOff(page)
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready

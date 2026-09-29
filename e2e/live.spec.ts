@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { playerName as p, prepareMatch, substitute } from './helpers.ts'
 
 test('partido: reloj, cambios, deshacer, recarga, descanso, 2ª parte con reentrada y final a los 90', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-10-10T16:00:00Z') })
+  await page.clock.install()
   await prepareMatch(page)
   await page.getByRole('button', { name: '▶ COMENZAR' }).click()
 

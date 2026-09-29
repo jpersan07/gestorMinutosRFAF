@@ -1,6 +1,6 @@
 import type { AppDatabase } from './db'
 import type { DataEnv } from './env'
-import type { AppScope } from './repositories/bootstrap'
+import type { AppScope } from './repositories/account'
 import { createMatch } from './repositories/matches'
 import { createPlayer } from './repositories/players'
 

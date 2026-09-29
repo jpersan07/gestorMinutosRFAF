@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { addPlayers, chooseCoach, createMatch, fillNextSlot, playerName, prepareMatch } from './helpers.ts'
+import { addPlayers, createMatch, fillNextSlot, login, playerName, prepareMatch, waitForDraftWith } from './helpers.ts'
 
 test('editor de alineación: convocatoria, formación, posiciones, duplicados y borrador', async ({ page }) => {
-  await chooseCoach(page)
+  await login(page)
   await addPlayers(page, 13)
   await createMatch(page, { opponent: 'CD Málaga' })
   await page.getByRole('link', { name: /CD Málaga/ }).click()
@@ -22,6 +22,7 @@ test('editor de alineación: convocatoria, formación, posiciones, duplicados y 
   await expect(page.getByText('Faltan 8 posiciones.')).toBeVisible()
 
   // El borrador sobrevive a una recarga.
+  await waitForDraftWith(page, playerName(3))
   await page.reload()
   await expect(page.getByRole('button', { name: `POR: ${playerName(1)}` })).toBeVisible()
   await expect(page.getByText('Faltan 8 posiciones.')).toBeVisible()

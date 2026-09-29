@@ -1,9 +1,12 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import { ErrorScreen } from './app/routing/ErrorScreen'
-import { RequireCoach } from './app/routing/RequireCoach'
+import { RequireAccount } from './app/routing/RequireAccount'
 import { RootLayout } from './app/routing/RootLayout'
 import { Start } from './app/routing/Start'
-import { CoachSelectPage } from './features/coach/CoachSelectPage'
+import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
+import { LoginPage } from './features/auth/LoginPage'
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
+import { TeamSetupPage } from './features/auth/TeamSetupPage'
 import { MatchesPage } from './features/matches/MatchesPage'
 import { EditMatchPage } from './features/matches/EditMatchPage'
 import { MatchHubPage } from './features/matches/MatchHubPage'
@@ -20,9 +23,12 @@ export const router = createBrowserRouter([
     errorElement: <ErrorScreen />,
     children: [
       { index: true, Component: Start },
-      { path: 'quien', Component: CoachSelectPage },
+      { path: 'login', Component: LoginPage },
+      { path: 'recuperar', Component: ForgotPasswordPage },
+      { path: 'restablecer', Component: ResetPasswordPage },
+      { path: 'entrar', Component: TeamSetupPage },
       {
-        Component: RequireCoach,
+        Component: RequireAccount,
         children: [
           { path: 'partidos', Component: MatchesPage },
           { path: 'partidos/nuevo', Component: NewMatchPage },
