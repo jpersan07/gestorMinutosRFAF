@@ -31,7 +31,7 @@ describe('vercel.json', () => {
     const directives = Object.fromEntries(csp.split(';').map((d) => d.trim().split(/\s+/)).map(([k, ...v]) => [k, v]))
     expect(directives['default-src']).toEqual(["'self'"])
     expect(directives['script-src']).toEqual(["'self'"])
-    expect(directives['connect-src']).toEqual(["'self'", 'https://*.supabase.co'])
+    expect(directives['connect-src']).toEqual(["'self'", 'https://elvmznejinfmxwxbqfku.supabase.co'])
     expect(directives['img-src']).toEqual(["'self'", 'data:']) // escudos en data URL
     expect(directives['frame-ancestors']).toEqual(["'none'"])
     expect(directives['object-src']).toEqual(["'none'"])

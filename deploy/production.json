@@ -1,5 +1,5 @@
 {
   "$comment": "Datos PÚBLICOS de producción (no son secretos). Se rellenan en 3e.2. Los usa scripts/check-build-env.mjs para impedir que una preview de Vercel apunte a la base de datos de producción (y que producción apunte a otra).",
-  "supabaseUrl": null,
-  "appUrl": null
+  "supabaseUrl": "https://elvmznejinfmxwxbqfku.supabase.co",
+  "appUrl": "https://gestor-minutos-rfaf.vercel.app"
 }
