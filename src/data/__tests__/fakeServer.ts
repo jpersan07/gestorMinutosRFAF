@@ -4,10 +4,11 @@ import { fromRemoteEvent, type RemoteEventInput, type RemoteEventRow } from '../
 import type { AppendResult, EditableTable, ServerRow, SyncRemote } from '../remote/syncRemote'
 import { T0 } from './testDb'
 
-// Servidor SIMULADO para las pruebas unitarias de descarga y TOMAR CONTROL. Reproduce lo que
-// importa del servidor real: cursores synced_at con la hora del SERVIDOR, "gana el último" en
-// los datos editables, eventos solo añadidos con seq = último + 1, control único y TOMAR
-// CONTROL atómico por control_epoch. (La validación completa se prueba contra Supabase local.)
+// Servidor SIMULADO para las pruebas unitarias de descarga, subida y TOMAR CONTROL. Reproduce lo
+// que importa del servidor real: cursores synced_at con la hora del SERVIDOR, "gana el último" en
+// los datos editables, eventos solo añadidos con seq = último + 1, control único, TOMAR CONTROL
+// atómico por control_epoch, MATCH_SAVED exige el RESULTADO y, con el partido guardado, el
+// informe y los minutos ya no cambian. (La validación completa se prueba contra Supabase local.)
 
 type Row = Record<string, unknown> & { synced_at: string }
 
@@ -33,6 +34,14 @@ export class FakeServer {
   /** Los N siguientes TOMAR CONTROL esperan a estar todos antes de procesarse (simultáneos). */
   private barrier: { size: number; waiting: Array<() => void> } | null = null
   readonly calls: Array<{ readonly table: string; readonly since: string | null }> = []
+  /** Peticiones de la SUBIDA, en orden: "upsert:<tabla>" o "rpc:<tipos de evento>". */
+  readonly requests: string[] = []
+  /**
+   * Se llama antes ('before') y después ('after') de procesar cada petición de la subida. Poner
+   * `offline = true` en 'before' simula un corte de red antes de enviarla; en 'after', que el
+   * servidor la procesó pero la respuesta se perdió.
+   */
+  onRequest: ((request: string, phase: 'before' | 'after') => void) | null = null
 
   private readonly tables: Record<EditableTable, Map<string, Row>> = {
     players: new Map(),
@@ -94,6 +103,21 @@ export class FakeServer {
     this.tables[table].set(key, { ...defaults, ...existing, ...input, team_id: this.teamId, synced_at: this.stamp() })
   }
 
+  /** Reglas del servidor para informe y minutos (guard_finished_match_data). */
+  private guardFinishedMatchData(table: EditableTable, input: Record<string, unknown>): string | null {
+    if (table !== 'match_reports' && table !== 'player_match_minutes') return null
+    const status = this.tables.matches.get(String(input.match_id))?.status
+    if (status === 'finished') return null
+    if (status === 'saved') {
+      const existing = this.tables[table].get(KEYS[table].map((k) => String(input[k])).join('|'))
+      const fields =
+        table === 'match_reports' ? ['result', 'observations'] : ['seconds_played', 'minutes_played', 'started']
+      const unchanged = existing !== undefined && fields.every((f) => existing[f] === input[f])
+      return unchanged ? null : 'MATCH_LOCKED'
+    }
+    return 'MATCH_NOT_FINISHED'
+  }
+
   /** append_match_events simplificado (orden, control único, CONTROL_TAKEN solo por TOMAR CONTROL). */
   append(userId: Id, matchId: Id, input: readonly RemoteEventInput[], allowControl = false): AppendResult {
     const match = this.tables.matches.get(matchId)
@@ -119,6 +143,11 @@ export class FakeServer {
       if (event.seq <= last) reject('SEQ_CONFLICT')
       else if (event.seq > last + 1) reject('SEQ_GAP')
       else if (event.type === 'CONTROL_TAKEN' && !allowControl) reject('TAKE_CONTROL_REQUIRED')
+      else if (
+        event.type === 'MATCH_SAVED' &&
+        String(this.tables.match_reports.get(matchId)?.result ?? '').trim() === ''
+      )
+        reject('RESULT_REQUIRED')
       else if (event.type === 'CONTROL_TAKEN' && controller[0] === event.device_id && controller[1] === userId)
         reject('ALREADY_CONTROLLER')
       else if (
@@ -256,25 +285,44 @@ export class FakeServer {
 
   /** Lo mínimo de supabase-js que usa la SUBIDA (3c): upserts y append_match_events. */
   supabase(userId: Id): Supabase {
-    const result = (fn: () => void) => {
-      if (this.offline) return Promise.resolve({ data: null, error: { message: 'TypeError: Failed to fetch' } })
-      fn()
-      return Promise.resolve({ data: null, error: null })
+    const offline = { data: null, error: { message: 'TypeError: Failed to fetch' } }
+    const request = (name: string, fn: () => { data: unknown; error: { code: string; message: string } | null }) => {
+      this.requests.push(name)
+      this.onRequest?.(name, 'before')
+      if (this.offline) return Promise.resolve(offline)
+      const response = fn()
+      this.onRequest?.(name, 'after')
+      return Promise.resolve(this.offline ? offline : response)
+    }
+    const result = (fn: () => string | null | void) => {
+      const error = fn()
+      return { data: null, error: error ? { code: 'P0001', message: error } : null }
     }
     const fake = {
       from: (table: string) => ({
         upsert: (rows: Record<string, unknown> | Array<Record<string, unknown>>) =>
-          result(() => {
-            if (table in KEYS) for (const row of [rows].flat()) this.upsert(table as EditableTable, row)
-          }),
-        insert: () => result(() => undefined),
+          request(`upsert:${table}`, () =>
+            result(() => {
+              if (!(table in KEYS)) return null
+              const list = [rows].flat()
+              for (const row of list) {
+                const error = this.guardFinishedMatchData(table as EditableTable, row)
+                if (error) return error
+              }
+              for (const row of list) this.upsert(table as EditableTable, row)
+              return null
+            }),
+          ),
+        insert: () => request(`insert:${table}`, () => result(() => undefined)),
       }),
       rpc: (name: string, args: { p_match_id: Id; p_events: RemoteEventInput[] }) => {
-        if (this.offline) return Promise.resolve({ data: null, error: { message: 'TypeError: Failed to fetch' } })
         if (name !== 'append_match_events') throw new Error(name)
-        return Promise.resolve({ data: this.append(userId, args.p_match_id, args.p_events), error: null })
+        return request(`rpc:${args.p_events.map((e) => e.type).join(',')}`, () => ({
+          data: this.append(userId, args.p_match_id, args.p_events),
+          error: null,
+        }))
       },
-      storage: { from: () => ({ upload: () => result(() => undefined) }) },
+      storage: { from: () => ({ upload: () => request('storage:upload', () => result(() => undefined)) }) },
     }
     return fake as unknown as Supabase
   }

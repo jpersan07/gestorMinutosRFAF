@@ -10,6 +10,7 @@ import {
 } from '../../domain'
 import type { AppDatabase, MatchSquadRecord, PlayerRecord } from '../db'
 import type { DataEnv } from '../env'
+import { editVersion } from './editVersion'
 import { failResult, okResult, type DataResult } from '../errors'
 
 export async function getSquad(db: AppDatabase, matchId: Id): Promise<readonly Id[] | null> {
@@ -29,10 +30,11 @@ export async function saveSquad(
     if (!match) return failResult({ code: 'NOT_FOUND' })
     if (!canEditSquad(match.status)) return failResult({ code: 'LOCKED' })
     const existing = new Set((await db.players.bulkGet([...playerIds])).flatMap((p) => (p ? [p.id] : [])))
+    const previous = await db.matchSquads.get(matchId)
     const record: MatchSquadRecord = {
       matchId,
       playerIds: [...new Set(playerIds)].filter((id) => existing.has(id)),
-      updatedAt: env.now(),
+      updatedAt: editVersion(env, previous?.updatedAt),
       updatedBy: coachId,
       syncState: 'pending',
       syncIssue: null,

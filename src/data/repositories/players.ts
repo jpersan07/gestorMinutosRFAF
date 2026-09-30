@@ -1,6 +1,7 @@
 import { validatePlayerInput, type Id, type PlayerInput } from '../../domain'
 import type { AppDatabase, PlayerRecord } from '../db'
 import type { DataEnv } from '../env'
+import { editVersion } from './editVersion'
 import { failResult, okResult, type DataResult } from '../errors'
 
 export function sortPlayers(players: readonly PlayerRecord[]): PlayerRecord[] {
@@ -60,7 +61,7 @@ export async function updatePlayer(
       name: input.name.trim(),
       number: input.number,
       active: input.active,
-      updatedAt: env.now(),
+      updatedAt: editVersion(env, current.updatedAt),
       // Editar resuelve un conflicto anterior (p. ej. dorsal): se vuelve a intentar subir.
       syncState: 'pending',
       syncIssue: null,

@@ -7,6 +7,7 @@ import {
 } from '../../domain'
 import type { AppDatabase, MatchRecord } from '../db'
 import type { DataEnv } from '../env'
+import { editVersion } from './editVersion'
 import { failResult, okResult, type DataResult } from '../errors'
 
 /** Por fecha y hora; los partidos sin fecha, al final (por orden de creación). */
@@ -95,7 +96,8 @@ export async function updateMatchDetails(
       ...normalizeMatchDetails(change),
       crestId: await applyCrest(db, env, current.crestId, change.crest),
       updatedAt: env.now(),
-      detailsUpdatedAt: env.now(),
+      // La versión de los datos (la del servidor) es la de la última edición: nunca va hacia atrás.
+      detailsUpdatedAt: editVersion(env, current.detailsUpdatedAt ?? current.createdAt),
       syncState: 'pending',
       syncIssue: null,
     }

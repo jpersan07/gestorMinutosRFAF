@@ -2,7 +2,8 @@ import type { SyncIssue } from '../db'
 
 /**
  * Qué hacer con un evento que append_match_events() ha rechazado:
- *   · needs-report → falta el informe en el servidor (RESULT_REQUIRED): subirlo y reintentar;
+ *   · needs-report → falta el informe en el servidor (RESULT_REQUIRED): se reintenta; la subida
+ *     siempre envía el informe pendiente (y espera a que se acepte) antes de MATCH_SAVED;
  *   · retry        → temporal (p. ej. faltan eventos anteriores): se reintenta después;
  *   · control-lost → otro dispositivo escribió antes / tiene el control: cuarentena + CONTROL PERDIDO;
  *   · invalid      → el servidor no acepta el contenido: cuarentena y aviso.

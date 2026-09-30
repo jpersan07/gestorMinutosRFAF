@@ -2,6 +2,7 @@ import { canEditReport, type Id } from '../../domain'
 import type { AppDatabase, MatchReportRecord } from '../db'
 import type { DataEnv } from '../env'
 import { failResult, okResult, type DataResult } from '../errors'
+import { editVersion } from './editVersion'
 
 export interface ReportInput {
   readonly result: string
@@ -24,11 +25,12 @@ export async function saveReport(
     const match = await db.matches.get(matchId)
     if (!match) return failResult({ code: 'NOT_FOUND' })
     if (!canEditReport(match.status)) return failResult({ code: 'LOCKED' })
+    const previous = await db.matchReports.get(matchId)
     const record: MatchReportRecord = {
       matchId,
       result: input.result,
       observations: input.observations,
-      updatedAt: env.now(),
+      updatedAt: editVersion(env, previous?.updatedAt),
       updatedBy: coachId,
       syncState: 'pending',
       syncIssue: null,

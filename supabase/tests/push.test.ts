@@ -103,7 +103,7 @@ async function serverCount(table: 'players' | 'match_events' | 'player_match_min
   return count ?? 0
 }
 
-describe('subida completa (orden: jugadores → escudo → partido → convocatoria → eventos → informe/minutos → errores)', () => {
+describe('subida completa (orden: jugadores → escudo → partido → convocatoria → eventos → informe/minutos → MATCH_SAVED → errores)', () => {
   it('todo termina en el servidor, en orden, y el móvil queda sin pendientes', async () => {
     const { coach, team, device } = await coachWithTeam()
     const players = await addPlayers(device, 14)
@@ -124,8 +124,8 @@ describe('subida completa (orden: jugadores → escudo → partido → convocato
     expect(saved.ok).toBe(true)
     await logError(device.db, new Error('Error técnico de prueba'), { at: 'test' })
 
-    // El informe se sube DESPUÉS de los eventos: el servidor pide el RESULTADO antes de aceptar
-    // MATCH_SAVED (RESULT_REQUIRED) y el motor sube el informe y reintenta en la misma pasada.
+    // El informe y los minutos se suben antes de MATCH_SAVED (que los bloquea en el servidor):
+    // todo en la misma pasada.
     const report = await device.push()
     expect(report).toMatchObject({ ok: true, newConflicts: 0, controlLost: [], quarantined: 0 })
     expect(await countPending(device.db)).toBe(0)

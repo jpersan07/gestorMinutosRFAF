@@ -165,7 +165,7 @@ export async function runPush({ db, supabase, scope, now = () => Date.now() }: P
     }
   }
 
-  // 6. Informe y minutos de un partido (también se usa desde 5 ante RESULT_REQUIRED) ------------
+  // 6. Informe y minutos de un partido (también desde 5, antes de enviar MATCH_SAVED) ---------
   const pushReportAndMinutes = async (matchId?: Id) => {
     const reports = await db.matchReports
       .where('syncState')
@@ -225,20 +225,50 @@ export async function runPush({ db, supabase, scope, now = () => Date.now() }: P
     }
   }
 
+  /**
+   * ¿El servidor ha ACEPTADO el informe y los minutos de este partido? Se suben primero y solo
+   * cuenta lo confirmado: nada pendiente ni rechazado en el móvil.
+   */
+  const reportAndMinutesAccepted = async (matchId: Id): Promise<boolean> => {
+    await pushReportAndMinutes(matchId)
+    const report = await db.matchReports.get(matchId)
+    const minutesNotAccepted = await db.playerMatchMinutes
+      .where('matchId')
+      .equals(matchId)
+      .filter((row) => row.syncState !== 'synced')
+      .count()
+    return (!report || report.syncState === 'synced') && minutesNotAccepted === 0
+  }
+
   // 5. Eventos: por partido, en orden de seq, SOLO mediante append_match_events ---------------
+  //
+  // MATCH_SAVED bloquea el partido en el servidor: después ya no acepta cambios en el informe ni
+  // en los minutos (MATCH_LOCKED) y la descarga dejaría en el móvil la versión anterior del
+  // servidor. Por eso se suben primero los eventos anteriores, después el informe y los minutos,
+  // y MATCH_SAVED solo cuando el servidor los ha aceptado. Si algo falla (p. ej. sin red),
+  // MATCH_SAVED queda pendiente para la siguiente pasada, que repite el mismo orden.
   const pendingEvents = await db.matchEvents.where('syncState').equals('pending').toArray()
   const matchIds = [...new Set(pendingEvents.map((e) => e.matchId))]
   for (const matchId of matchIds) {
     const match = await db.matches.get(matchId)
     if (!match || match.controlLostAt) continue
 
-    let reportPushed = false
+    /** Informe y minutos de este partido ya aceptados por el servidor en esta pasada. */
+    let reportAccepted = false
     for (;;) {
       const pending: StoredEvent[] = (await db.matchEvents.where('matchId').equals(matchId).sortBy('seq')).filter(
         (e) => e.syncState === 'pending',
       )
       if (pending.length === 0) break
-      const batch = pending.slice(0, EVENTS_PER_CALL)
+      const saveAt = pending.findIndex((e) => e.type === 'MATCH_SAVED')
+      if (saveAt === 0) {
+        if (!reportAccepted && !(await reportAndMinutesAccepted(matchId))) {
+          transientFailures++
+          break
+        }
+        reportAccepted = true
+      }
+      const batch = pending.slice(0, saveAt > 0 ? Math.min(saveAt, EVENTS_PER_CALL) : EVENTS_PER_CALL)
 
       let result: AppendResult
       try {
@@ -270,12 +300,6 @@ export async function runPush({ db, supabase, scope, now = () => Date.now() }: P
       }
 
       const kind = classifyEventRejection(result.rejected.reason)
-      if (kind === 'needs-report' && !reportPushed) {
-        // MATCH_SAVED exige el RESULTADO en el servidor: se sube el informe y se reintenta.
-        reportPushed = true
-        await pushReportAndMinutes(matchId)
-        continue
-      }
       if (kind === 'control-lost' || kind === 'invalid') {
         quarantined += await quarantineRejectedEvents(db, matchId, result.rejected, {
           controlLost: kind === 'control-lost',
