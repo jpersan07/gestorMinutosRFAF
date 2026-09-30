@@ -1,15 +1,17 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { useApp } from '../../app/context'
+import { substitutionCandidates } from '../../app/match/substitutionCandidates'
 import { useMatchDispatch, type MatchView } from '../../app/match/useMatch'
 import { SessionLostNotice } from '../../app/routing/SessionLostBanner'
 import { OfflineNotice } from '../../app/sync/ConnectionNotice'
 import { errorMessage } from '../../app/messages'
 import { useAction } from '../../app/useAction'
-import type { PlayerRecord } from '../../data'
+import { seasonPlayerTotals, type PlayerRecord } from '../../data'
 import {
   benchPlayers,
   clockMinute,
-  computeMinutes,
   formatClock,
   getFormation,
   lastUndoableSubstitution,
@@ -25,7 +27,10 @@ import { TestModeBadge, TestModePanel } from './TestModePanel'
 /** Parte en juego: cronómetro, campo y cambios. Pensada para una mano y en vertical. */
 export function LivePanel({ view, now }: { view: MatchView; now: number }) {
   const { state, match, playersById } = view
+  const { db } = useApp()
   const dispatch = useMatchDispatch(match.id)
+  // Minutos de la temporada (partidos finalizados o guardados): no incluyen este partido.
+  const seasonTotals = useLiveQuery(() => seasonPlayerTotals(db, match.seasonId), [db, match.seasonId])
   const { run, busy, unexpected } = useAction()
   const [outgoing, setOutgoing] = useState<{ player: PlayerRecord; slotLabel: string } | null>(null)
   const [confirmUndo, setConfirmUndo] = useState(false)
@@ -33,10 +38,8 @@ export function LivePanel({ view, now }: { view: MatchView; now: number }) {
 
   const second = matchSecondAt(state, now)
   const formation = state.currentFormationId ? getFormation(state.currentFormationId) : null
-  const minutesById = new Map(
-    computeMinutes(view.events, { untilSecond: second }).map((p) => [p.playerId, p.minutesPlayed]),
-  )
   const bench = benchPlayers(state).flatMap((id) => playersById.get(id) ?? [])
+  const candidates = substitutionCandidates(bench, view.events, second, seasonTotals ?? new Map())
   const lastSub = lastUndoableSubstitution(state)
   const name = (id: string) => playersById.get(id)?.name ?? '—'
 
@@ -117,8 +120,7 @@ export function LivePanel({ view, now }: { view: MatchView; now: number }) {
 
       <SubstitutionFlow
         outgoing={outgoing}
-        bench={bench}
-        minutesById={minutesById}
+        candidates={candidates}
         matchSecond={second}
         busy={busy}
         onCancel={() => setOutgoing(null)}
