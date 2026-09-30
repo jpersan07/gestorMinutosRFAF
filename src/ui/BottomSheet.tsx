@@ -33,7 +33,7 @@ export function BottomSheet({ open, title, subtitle, onClose, children, footer }
         // Tocar fuera (el fondo) cierra la hoja.
         if (event.target === ref.current) onClose()
       }}
-      className="mx-auto mb-0 mt-auto max-h-[85dvh] w-full max-w-xl rounded-t-3xl bg-panel p-0 text-line backdrop:bg-black/70"
+      className="mx-auto mb-0 mt-auto max-h-[85dvh] w-full max-w-xl animate-sheet-in rounded-t-3xl border-t border-accent/20 bg-panel p-0 text-line shadow-2xl backdrop:bg-black/70"
     >
       {open && (
         <div className="flex max-h-[85dvh] flex-col">

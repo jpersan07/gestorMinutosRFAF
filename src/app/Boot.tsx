@@ -18,6 +18,7 @@ import { AuthContext, type AuthContextValue, type AuthStatus } from './auth/Auth
 import { authErrorMessage } from './auth/messages'
 import { discardUnfinishedRecovery, readStoredSession } from './auth/session'
 import { resolveStartup } from './auth/startup'
+import { ClubCrest } from '../ui/ClubCrest'
 
 const db = new AppDatabase()
 const url = import.meta.env.VITE_SUPABASE_URL
@@ -221,6 +222,14 @@ export function Boot({ children }: { children: ReactNode }) {
       </FullScreenMessage>
     )
   }
-  if (!value) return <main className="min-h-dvh" aria-busy="true" />
+  // Arranque (muy breve: solo datos del dispositivo): el escudo en vez de una pantalla vacía.
+  if (!value) {
+    return (
+      <main className="flex min-h-dvh animate-fade-in flex-col items-center justify-center gap-4" aria-busy="true">
+        <ClubCrest size={88} className="ring-1 ring-accent/30" />
+        <p className="text-sm font-bold tracking-[0.3em] text-accent">GESTOR DE MINUTOS</p>
+      </main>
+    )
+  }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

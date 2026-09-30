@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
+import { ClubCrest } from './ClubCrest'
 
 export interface PageProps {
   readonly title: string
@@ -13,7 +14,7 @@ export interface PageProps {
 export function Page({ title, back, actions, children }: PageProps) {
   return (
     <div className="flex min-h-dvh flex-col pb-[env(safe-area-inset-bottom)]">
-      <header className="sticky top-0 z-10 flex min-h-14 items-center gap-2 bg-pitch/95 px-2 pt-[env(safe-area-inset-top)] backdrop-blur">
+      <header className="sticky top-0 z-10 flex min-h-14 items-center gap-2 border-b border-accent/15 bg-pitch/95 px-2 pt-[env(safe-area-inset-top)] backdrop-blur">
         {back ? (
           <Link
             to={back}
@@ -23,7 +24,8 @@ export function Page({ title, back, actions, children }: PageProps) {
             ←
           </Link>
         ) : (
-          <span className="w-2" />
+          // Pantallas principales (sin "volver"): el escudo del club.
+          <ClubCrest size={36} className="mx-1 ring-1 ring-accent/30" />
         )}
         <h1 className="min-w-0 flex-1 truncate text-xl font-black tracking-tight">{title}</h1>
         {actions}

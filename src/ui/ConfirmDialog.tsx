@@ -43,7 +43,7 @@ export function ConfirmDialog({
         event.preventDefault()
         onCancel()
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl bg-panel p-5 text-line backdrop:bg-black/70"
+      className="m-auto w-[calc(100%-2rem)] max-w-md animate-dialog-in rounded-2xl bg-panel p-5 text-line shadow-2xl ring-1 ring-accent/15 backdrop:bg-black/70"
     >
       {open && (
         <div className="flex flex-col gap-5">
