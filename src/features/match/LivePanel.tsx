@@ -18,6 +18,7 @@ import {
   matchSecondAt,
 } from '../../domain'
 import { Button } from '../../ui/Button'
+import { ClubCrest } from '../../ui/ClubCrest'
 import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { Pitch } from '../../ui/Pitch'
 import { PitchSlot } from '../../ui/PitchSlot'
@@ -61,7 +62,7 @@ export function LivePanel({ view, now }: { view: MatchView; now: number }) {
             ←
           </Link>
           <p className="min-w-0 flex-1 truncate text-center text-lg font-black uppercase">{match.opponent}</p>
-          <span className="w-11" />
+          <ClubCrest size={44} className="ring-1 ring-accent/30" />
         </div>
         <p className="text-sm font-bold tracking-[0.2em] text-muted">
           {state.status === 'first_half' ? 'PRIMERA PARTE' : 'SEGUNDA PARTE'}

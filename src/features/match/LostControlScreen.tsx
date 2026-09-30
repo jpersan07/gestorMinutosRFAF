@@ -9,6 +9,7 @@ import { useSync } from '../../app/sync/SyncContext'
 import { useAction } from '../../app/useAction'
 import { acknowledgeControlLoss, canAcknowledgeControlLoss } from '../../data'
 import { Button } from '../../ui/Button'
+import { ClubCrest } from '../../ui/ClubCrest'
 import { MatchReadOnly } from './MatchReadOnly'
 
 /**
@@ -33,6 +34,7 @@ export function LostControlScreen({ view, now }: { view: MatchView; now: number 
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-5 px-4 py-8">
+      <ClubCrest size={56} className="self-center ring-1 ring-accent/30" />
       <section role="alert" aria-labelledby="lost-control-title" className="flex flex-col gap-4 rounded-2xl bg-warn p-5 text-accent-ink">
         <h1 id="lost-control-title" className="text-2xl font-black">
           OTRO DISPOSITIVO HA TOMADO EL CONTROL

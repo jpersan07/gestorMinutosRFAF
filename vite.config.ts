@@ -29,8 +29,8 @@ const config = {
         scope: '/',
         display: 'standalone',
         orientation: 'any',
-        background_color: '#0b1f14',
-        theme_color: '#0b1f14',
+        background_color: '#0a1628',
+        theme_color: '#0a1628',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

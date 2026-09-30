@@ -1,15 +1,18 @@
 @import 'tailwindcss';
 
-/* Alto contraste para usar al aire libre: fondo verde muy oscuro, texto casi blanco. */
+/*
+ * Alto contraste para usar al aire libre: azul marino muy oscuro y el azul del escudo del club.
+ * Verde, rojo y amarillo quedan reservados para significados (estado, avisos, errores): nunca
+ * se usan como color de marca. Todo el texto ≥ 7:1 (WCAG AAA) sobre pitch, panel y panel-strong.
+ */
 @theme {
-  --color-pitch: #0b1f14;
-  --color-panel: #13301f;
-  --color-panel-strong: #1c4430;
-  --color-line: #e8f5ec;
-  /* Texto secundario: ≥ 7:1 (WCAG AAA) también sobre panel-strong. */
-  --color-muted: #bdd8c6;
-  --color-accent: #4ade80;
-  --color-accent-ink: #052e16;
+  --color-pitch: #0a1628;
+  --color-panel: #112440;
+  --color-panel-strong: #172f55;
+  --color-line: #eef3fb;
+  --color-muted: #c2d2ea;
+  --color-accent: #93c5fd;
+  --color-accent-ink: #061a3a;
   --color-warn: #facc15;
   /* Errores: ≥ 7:1 sobre el fondo y con su texto (WCAG AAA). */
   --color-danger: #fca5a5;
@@ -58,7 +61,7 @@ body {
   overscroll-behavior: none;
 }
 
-/* Foco visible (teclado) en el verde de la app; con el dedo no aparece. */
+/* Foco visible (teclado) en el azul de la app; con el dedo no aparece. */
 :focus-visible {
   outline: 3px solid var(--color-accent);
   outline-offset: 2px;

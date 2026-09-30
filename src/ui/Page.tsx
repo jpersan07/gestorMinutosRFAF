@@ -15,7 +15,7 @@ export function Page({ title, back, actions, children }: PageProps) {
   return (
     <div className="flex min-h-dvh flex-col pb-[env(safe-area-inset-bottom)]">
       <header className="sticky top-0 z-10 flex min-h-14 items-center gap-2 border-b border-accent/15 bg-pitch/95 px-2 pt-[env(safe-area-inset-top)] backdrop-blur">
-        {back ? (
+        {back && (
           <Link
             to={back}
             aria-label="Volver"
@@ -23,10 +23,9 @@ export function Page({ title, back, actions, children }: PageProps) {
           >
             ←
           </Link>
-        ) : (
-          // Pantallas principales (sin "volver"): el escudo del club.
-          <ClubCrest size={36} className="mx-1 ring-1 ring-accent/30" />
         )}
+        {/* El escudo del club, en todas las pantallas. */}
+        <ClubCrest size={36} className={`ring-1 ring-accent/30 ${back ? '' : 'mx-1'}`} />
         <h1 className="min-w-0 flex-1 truncate text-xl font-black tracking-tight">{title}</h1>
         {actions}
       </header>

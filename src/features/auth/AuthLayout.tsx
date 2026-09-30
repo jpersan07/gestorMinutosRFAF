@@ -6,7 +6,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-8 px-4 py-10">
       <div className="flex flex-col items-center text-center">
-        {/* Halo verde tras el escudo: el verde es el color de la app. */}
+        {/* Halo azul tras el escudo: el azul es el color de la app. */}
         <div className="rounded-full bg-accent/10 p-2 shadow-[0_0_48px_-8px] shadow-accent/40 ring-1 ring-accent/30">
           <ClubCrest size={96} />
         </div>
