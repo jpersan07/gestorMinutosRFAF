@@ -78,7 +78,7 @@ Al abrir la app: si hay un partido **en juego o en descanso controlado por este 
 
 - **Cambio (3 toques)**: tocar jugador → hoja "CAMBIO · Sale: Carlos (DC)" con los convocados fuera del campo → tocar el que entra → "57:23 · Carlos → Pablo [CANCELAR] [CONFIRMAR]". Después aparece la `UndoBar`.
 - **Editor de alineación**: chips de formación → campo con slots → tocar slot → hoja con convocados (primero los libres; los ya colocados muestran su posición y ofrecen "MOVER AQUÍ"; opción "QUITAR"). Contador "Faltan N posiciones". Si se edita después de confirmar, hay que volver a confirmar antes de PLAY.
-- **Convocatoria**: jugadores activos ordenados por minutos acumulados (mostrados en cada fila), con casillas; **CONVOCAR A TODOS**; contador; **GUARDAR**; **ENVIAR WHATSAPP** (guarda y abre `wa.me` con el mensaje en orden alfabético). Aviso si se sale con cambios sin guardar.
+- **Convocatoria**: jugadores activos ordenados por minutos acumulados (mostrados en cada fila), con casillas; **CONVOCAR A TODOS**; contador; **GUARDAR**; **ENVIAR WHATSAPP** (guarda y abre `wa.me` con el mensaje ordenado por dorsal). Aviso si se sale con cambios sin guardar.
 - **Resumen**: minutos (de más a menos), cambios, cambios del descanso, formaciones y alineación inicial. Después el informe: RESULTADO (texto) y OBSERVACIONES (texto grande), que se guardan solos mientras se escribe. **GUARDAR PARTIDO** → "¿Guardar partido?" → "¿ESTÁS SEGURO?" → "✓ PARTIDO GUARDADO [VOLVER A PARTIDOS]".
 - **Orientación**: vertical por defecto; en horizontal, el campo a la izquierda y el reloj y los controles a la derecha.
 - **Actualizaciones de la app**: el aviso "Nueva versión · ACTUALIZAR" solo se muestra fuera de `/juego`.

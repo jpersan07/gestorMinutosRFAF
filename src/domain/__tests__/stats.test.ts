@@ -41,13 +41,13 @@ describe('estadísticas acumuladas', () => {
 
 describe('orden de la convocatoria', () => {
   const players = [
-    { id: 'b', name: 'Bruno' },
-    { id: 'a', name: 'Álvaro' },
-    { id: 'c', name: 'Carlos' },
-    { id: 'z', name: 'Zoe' },
+    { id: 'b', name: 'Bruno', number: 8 },
+    { id: 'a', name: 'Álvaro', number: 3 },
+    { id: 'c', name: 'Carlos', number: 5 },
+    { id: 'z', name: 'Zoe', number: 1 },
   ]
 
-  it('ordena de más a menos minutos; a igualdad, alfabético (con acentos); sin datos, al final', () => {
+  it('ordena de más a menos minutos; a igualdad, por dorsal; sin datos, al final', () => {
     const totals = aggregatePlayerTotals([
       {
         matchId: 'm1',
@@ -60,6 +60,48 @@ describe('orden de la convocatoria', () => {
       },
     ])
     expect(sortPlayersByMinutes(players, totals).map((p) => p.name)).toEqual(['Carlos', 'Álvaro', 'Bruno', 'Zoe'])
+  })
+
+  it('a igualdad de minutos, el dorsal se compara como NÚMERO (2 antes que 10), nunca como texto', () => {
+    const numbers = [16, 2, 12, 1, 15, 10, 14, 11, 13]
+    const squad = numbers.map((number) => ({ id: `p${number}`, name: `Prueba${number}`, number }))
+    const sorted = sortPlayersByMinutes(squad, new Map()).map((p) => p.number)
+    expect(sorted).toEqual([1, 2, 10, 11, 12, 13, 14, 15, 16])
+    expect(sorted).not.toEqual([1, 10, 11, 12, 13, 14, 15, 16, 2])
+  })
+
+  it('los minutos siguen mandando sobre el dorsal', () => {
+    const totals = aggregatePlayerTotals([
+      {
+        matchId: 'm1',
+        squad: ['A', 'B', 'C'],
+        players: [
+          { playerId: 'A', secondsPlayed: 1200, minutesPlayed: 20, started: true },
+          { playerId: 'B', secondsPlayed: 600, minutesPlayed: 10, started: false },
+          { playerId: 'C', secondsPlayed: 600, minutesPlayed: 10, started: false },
+        ],
+      },
+    ])
+    const squad = [
+      { id: 'B', name: 'Jugador B', number: 2 },
+      { id: 'C', name: 'Jugador C', number: 1 },
+      { id: 'A', name: 'Jugador A', number: 10 },
+    ]
+    expect(sortPlayersByMinutes(squad, totals).map((p) => [p.id, p.number])).toEqual([
+      ['A', 10],
+      ['C', 1],
+      ['B', 2],
+    ])
+  })
+
+  it('sin dorsal, al final de su grupo de minutos; a igual dorsal, por nombre', () => {
+    const squad = [
+      { id: 'x', name: 'Sin dorsal', number: null },
+      { id: 'o', name: 'Óscar', number: 5 },
+      { id: 'n', name: 'Bruno', number: 5 },
+      { id: 'u', name: 'Uno', number: 1 },
+    ]
+    expect(sortPlayersByMinutes(squad, new Map()).map((p) => p.name)).toEqual(['Uno', 'Bruno', 'Óscar', 'Sin dorsal'])
   })
 
   it('no modifica la lista original', () => {

@@ -5,7 +5,7 @@ export interface SquadMessageInput {
   /** Hora local, 'HH:MM'. Opcional. */
   readonly kickoffTime?: string | null
   readonly location?: string | null
-  readonly players: readonly { readonly name: string }[]
+  readonly players: readonly { readonly name: string; readonly number: number }[]
 }
 
 const weekdayFormatter = new Intl.DateTimeFormat('es-ES', { weekday: 'long', timeZone: 'UTC' })
@@ -29,7 +29,8 @@ export function formatMatchDay(isoDate: string): string {
  *   - Carlos
  *   - Juan
  *
- * Los jugadores van en orden alfabético (no por minutos: el grupo no debe ver un ranking).
+ * Los jugadores van por DORSAL, de menor a mayor y comparado como número (2 antes que 10); nunca
+ * por minutos: el grupo no debe ver un ranking ni señalar a quien menos juega.
  * Si falta fecha, hora o ubicación, se omiten (y la línea entera si no hay ninguna).
  */
 export function buildSquadMessage(input: SquadMessageInput): string {
@@ -37,9 +38,9 @@ export function buildSquadMessage(input: SquadMessageInput): string {
     .filter((part): part is string => Boolean(part))
     .join(' - ')
 
-  const names = input.players
+  const names = [...input.players]
+    .sort((a, b) => a.number - b.number || a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true }))
     .map((player) => player.name.trim())
-    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
 
   return [
     `VS ${input.opponent.trim().toLocaleUpperCase('es')}`,

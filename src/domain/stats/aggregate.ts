@@ -52,13 +52,25 @@ export function aggregatePlayerTotals(records: readonly MatchMinutesRecord[]): M
   return totals
 }
 
-/** Orden de la convocatoria: más minutos primero; a igualdad, por nombre. */
-export function sortPlayersByMinutes<P extends Pick<Player, 'id' | 'name'>>(
+/**
+ * Orden de la convocatoria: más minutos primero; a igualdad, por DORSAL de menor a mayor comparado
+ * como número (2 antes que 10; sin dorsal, al final) y, si también coincide, por nombre.
+ */
+export function sortPlayersByMinutes<P extends Pick<Player, 'id' | 'name' | 'number'>>(
   players: readonly P[],
   totals: ReadonlyMap<Id, PlayerTotals>,
 ): P[] {
   const minutesOf = (player: P) => totals.get(player.id)?.totalMinutes ?? 0
+  const byNumber = (a: P, b: P) => {
+    if (a.number === b.number) return 0
+    if (a.number === null) return 1
+    if (b.number === null) return -1
+    return a.number - b.number
+  }
   return [...players].sort(
-    (a, b) => minutesOf(b) - minutesOf(a) || a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
+    (a, b) =>
+      minutesOf(b) - minutesOf(a) ||
+      byNumber(a, b) ||
+      a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true }),
   )
 }

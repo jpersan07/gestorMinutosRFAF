@@ -498,8 +498,8 @@ Propongo **un cambio respecto al PRD**: la persistencia **local** (IndexedDB) en
 - `MATCH_STARTED` congela convocatoria y duración: el historial se basta a sí mismo.
 - Al cambiar de formación, los jugadores se recolocan por rol; lo que no encaje queda sin asignar.
 - Un comando pulsado justo después del final de parte primero materializa el final (se persiste) y después se rechaza.
-- Orden de la convocatoria: minutos acumulados (partidos `finished`/`saved` de la temporada), empate → nombre.
-- Mensaje de WhatsApp: jugadores en orden alfabético (no por minutos, para no publicar un ranking).
+- Orden de la convocatoria: minutos acumulados (partidos `finished`/`saved` de la temporada), empate → dorsal (como número; sin dorsal, al final) → nombre.
+- Mensaje de WhatsApp: jugadores por dorsal, de menor a mayor y comparado como número (no por minutos, para no publicar un ranking ni señalar a quien menos juega).
 - Fecha y hora del partido como fecha/hora locales (sin zona horaria).
 - Sin límite de cambios (no especificado).
-- Convocatoria: botón **"CONVOCAR A TODOS"** (selecciona todos los jugadores activos); después se quitan individualmente. La lista de selección se ordena por minutos acumulados; el mensaje de WhatsApp sigue en orden alfabético.
+- Convocatoria: botón **"CONVOCAR A TODOS"** (selecciona todos los jugadores activos); después se quitan individualmente. La lista de selección se ordena por minutos acumulados; el mensaje de WhatsApp va por dorsal.
