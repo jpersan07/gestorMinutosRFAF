@@ -11,6 +11,7 @@ import { Crest } from '../../ui/Crest'
 import { Page } from '../../ui/Page'
 import { StatusBadge } from '../../ui/StatusBadge'
 import { matchDetailsLine } from './matchDetails'
+import { TestModeToggle } from './TestModeToggle'
 
 /** Ficha del partido: información, estado y las acciones que tocan según el estado. */
 export function MatchHubPage() {
@@ -94,6 +95,8 @@ export function MatchHubPage() {
           dispositivo ya lo había empezado. Se muestran los datos del servidor.
         </p>
       )}
+
+      <TestModeToggle match={match} />
 
       <nav aria-label="Acciones del partido" className="flex flex-col gap-3">
         {canEditMatchDetails(match.status) && (

@@ -14,6 +14,7 @@ import type { AppDatabase, MatchRecord, PlayerMatchMinutesRecord, StoredEvent } 
 import type { DataEnv } from '../env'
 import { failResult, okResult, type DataResult } from '../errors'
 import { lastControlEvent, matchClockOffset } from '../sync/clock'
+import { isTestTeam, TEST_CLOCK_BUDGET_MS } from './testTeam'
 
 /** Quién ejecuta el comando: este dispositivo y el entrenador seleccionado. */
 export interface Actor {
@@ -31,7 +32,7 @@ export async function loadMatchState(db: AppDatabase, matchId: Id): Promise<Matc
 
 type Step = (state: MatchState, ctx: CommandContext) => { state: MatchState; events: MatchEvent[]; error: DomainError | null }
 
-const ENGINE_TABLES = (db: AppDatabase) => [db.matches, db.matchEvents, db.matchSquads, db.playerMatchMinutes]
+const ENGINE_TABLES = (db: AppDatabase) => [db.matches, db.matchEvents, db.matchSquads, db.playerMatchMinutes, db.teams]
 
 /**
  * Núcleo de escritura. SIEMPRE dentro de una transacción: lee los eventos, aplica el motor
@@ -57,9 +58,15 @@ async function runStep(
   // Hora de los eventos = reloj del móvil + corrección respecto al servidor, congelada para
   // este periodo de control desde PLAY (ver sync/clock.ts).
   const liveOffset = env.clockOffsetMs?.() ?? 0
-  const offset = matchClockOffset(match, stored, liveOffset)
+  let offsetMs = matchClockOffset(match, stored, liveOffset).ms
+  // MODO PRUEBAS (solo equipo DEMO): antes de PLAY, el partido se fecha hacia atrás para que los
+  // botones de prueba puedan adelantar el reloj sin fechar nunca un evento en el futuro.
+  const started = stored.some((e) => e.type === 'MATCH_STARTED')
+  if (!started && match.testMode && isTestTeam(await db.teams.get(match.teamId))) {
+    offsetMs = liveOffset - TEST_CLOCK_BUDGET_MS
+  }
   const ctx: CommandContext = {
-    now: env.now() - liveOffset + offset.ms,
+    now: env.now() - liveOffset + offsetMs,
     deviceId: actor.deviceId,
     coachId: actor.coachId,
     squad: (await db.matchSquads.get(matchId))?.playerIds ?? [],
@@ -72,7 +79,7 @@ async function runStep(
     const control = lastControlEvent([...stored, ...result.events])
     await db.matches.put({
       ...matchRecordFor(match, result.state, result.events, actor, env.now()),
-      clockOffset: control ? { ms: offset.ms, controlEventId: control.id } : (match.clockOffset ?? null),
+      clockOffset: control ? { ms: offsetMs, controlEventId: control.id } : (match.clockOffset ?? null),
     })
     if (result.state.status === 'finished' || result.state.status === 'saved') {
       await writeMinutesProjection(db, matchId, [...stored, ...result.events])

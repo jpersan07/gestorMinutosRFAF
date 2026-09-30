@@ -39,6 +39,10 @@ export function errorMessage(error: DataError): string {
       return 'Para tomar el control necesitas conexión.'
     case 'OFFICIAL_STATE_PENDING':
       return 'Esperando conexión para cargar el partido del otro dispositivo.'
+    case 'TEST_MODE_UNAVAILABLE':
+      return 'El modo pruebas solo existe para el equipo DEMO y se activa antes de empezar el partido.'
+    case 'TEST_CLOCK_EXHAUSTED':
+      return 'Modo pruebas: el reloj ya no se puede adelantar más en este partido.'
     case 'MATCH_LOCKED':
       return 'El partido está guardado y no se puede modificar.'
     case 'NOT_CONTROLLER':

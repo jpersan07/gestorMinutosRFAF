@@ -67,11 +67,13 @@ export async function countEmailsTo(email: string): Promise<number> {
 }
 
 /** Cuenta de entrenador con SU PROPIO equipo y temporada activa: cada test trabaja aislado. */
-export async function createCoachWithOwnTeam(): Promise<TestCoach & { readonly teamId: string; readonly teamName: string }> {
+export async function createCoachWithOwnTeam(
+  options: { readonly teamName?: string } = {},
+): Promise<TestCoach & { readonly teamId: string; readonly teamName: string }> {
   const coach = await createCoach({ inDemoTeam: false })
   const teamId = randomUUID()
   const seasonId = randomUUID()
-  const teamName = `Equipo ${coach.displayName}`
+  const teamName = options.teamName ?? `Equipo ${coach.displayName}`
   const steps = [
     await admin.from('teams').insert({ id: teamId, name: teamName }),
     await admin.from('seasons').insert({ id: seasonId, team_id: teamId, name: '2026-27' }),

@@ -14,6 +14,10 @@ export type DataError =
   | { readonly code: 'TAKE_CONTROL_REQUIRES_SERVER' }
   /** ENTENDIDO antes de haber descargado el estado oficial del partido (3d). */
   | { readonly code: 'OFFICIAL_STATE_PENDING' }
+  /** MODO PRUEBAS: no disponible (no es el equipo DEMO, no está activado o el partido ya empezó). */
+  | { readonly code: 'TEST_MODE_UNAVAILABLE' }
+  /** MODO PRUEBAS: no se puede adelantar más el reloj (ya está en la hora real). */
+  | { readonly code: 'TEST_CLOCK_EXHAUSTED' }
 
 export type DataResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: DataError }
 

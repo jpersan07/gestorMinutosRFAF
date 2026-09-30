@@ -13,6 +13,7 @@ import {
   runPush,
   saveSquad,
   ServerClock,
+  setTestMode,
   supabaseRemote,
   syncOnce,
   takeControl,
@@ -81,7 +82,7 @@ export async function coachInTeam(team: TestTeam, name: string) {
 }
 
 /** A: 14 jugadores, partido (con escudo) y convocatoria; lo empieza en el móvil (sin subirlo). */
-export async function preparedLocally(a: Phone, options: { crest?: string } = {}) {
+export async function preparedLocally(a: Phone, options: { crest?: string; testMode?: boolean } = {}) {
   const players: Id[] = []
   for (let n = 1; n <= 14; n++) {
     const result = await createPlayer(a.db, a.env, a.scope.teamId, { name: `Jugador ${n}`, number: n })
@@ -98,6 +99,10 @@ export async function preparedLocally(a: Phone, options: { crest?: string } = {}
   if (!match.ok) throw new Error(JSON.stringify(match.error))
   const matchId = match.value.id
   await saveSquad(a.db, a.env, matchId, players, a.scope.userId)
+  if (options.testMode) {
+    const enabled = await setTestMode(a.db, a.env, matchId, true)
+    if (!enabled.ok) throw new Error(JSON.stringify(enabled.error))
+  }
   await a.run(matchId, { type: 'START_SETUP' })
   await a.run(matchId, { type: 'CONFIRM_LINEUP', lineup: lineupOf('4-3-3', players.slice(0, 11)) })
   await a.run(matchId, { type: 'START_MATCH' })

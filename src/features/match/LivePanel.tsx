@@ -20,6 +20,7 @@ import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { Pitch } from '../../ui/Pitch'
 import { PitchSlot } from '../../ui/PitchSlot'
 import { SubstitutionFlow } from './SubstitutionFlow'
+import { TestModeBadge, TestModePanel } from './TestModePanel'
 
 /** Parte en juego: cronómetro, campo y cambios. Pensada para una mano y en vertical. */
 export function LivePanel({ view, now }: { view: MatchView; now: number }) {
@@ -62,6 +63,7 @@ export function LivePanel({ view, now }: { view: MatchView; now: number }) {
         <p className="text-sm font-bold tracking-[0.2em] text-muted">
           {state.status === 'first_half' ? 'PRIMERA PARTE' : 'SEGUNDA PARTE'}
         </p>
+        {view.testMode && <TestModeBadge />}
         <p role="timer" aria-label="Cronómetro" className="tabular text-7xl font-black leading-none">
           {formatClock(second)}
         </p>
@@ -90,6 +92,7 @@ export function LivePanel({ view, now }: { view: MatchView; now: number }) {
       </div>
 
       <footer className="flex flex-col gap-2 [grid-area:bottom] landscape:justify-end">
+        <TestModePanel view={view} />
         <SessionLostNotice />
         <OfflineNotice />
         {(error ?? unexpected) && (

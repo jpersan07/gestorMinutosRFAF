@@ -8,6 +8,7 @@ import { secondHalfAvailableAt } from '../../domain'
 import { Button } from '../../ui/Button'
 import { Page } from '../../ui/Page'
 import { LineupStep } from './LineupStep'
+import { TestModeBadge, TestModePanel } from './TestModePanel'
 
 function ContinueButton({ view, now, confirmed }: { view: MatchView; now: number; confirmed: boolean }) {
   const dispatch = useMatchDispatch(view.match.id)
@@ -54,9 +55,11 @@ export function HalftimePanel({ view, now }: { view: MatchView; now: number }) {
         <p className="text-lg font-black uppercase">{view.match.opponent}</p>
         <p className="tabular text-5xl font-black">45:00</p>
         <p className="font-semibold">Primera parte finalizada.</p>
+        {view.testMode && <TestModeBadge />}
         {!confirmed && <p className="text-muted">Debes confirmar la alineación de la segunda parte.</p>}
       </section>
 
+      <TestModePanel view={view} />
       {configuring ? (
         <LineupStep
           view={view}

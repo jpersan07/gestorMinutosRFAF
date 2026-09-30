@@ -1,6 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useCallback } from 'react'
-import { getSquad, listMatchEvents, listPlayers, runMatchCommand, type MatchRecord, type PlayerRecord } from '../../data'
+import {
+  getSquad,
+  isTestTeam,
+  listMatchEvents,
+  listPlayers,
+  runMatchCommand,
+  type MatchRecord,
+  type PlayerRecord,
+} from '../../data'
 import { replay, type Id, type MatchCommand, type MatchEvent, type MatchState } from '../../domain'
 import { useApp, useCoachId } from '../context'
 
@@ -14,6 +22,8 @@ export interface MatchView {
   readonly playersById: ReadonlyMap<Id, PlayerRecord>
   /** Este dispositivo puede modificar el partido. */
   readonly isController: boolean
+  /** MODO PRUEBAS activo: equipo DEMO (según el servidor) y activado en este móvil. */
+  readonly testMode: boolean
 }
 
 /** Partido reconstruido desde IndexedDB; se actualiza solo cuando cambian los datos. */
@@ -22,10 +32,11 @@ export function useMatch(matchId: Id): MatchView | null | undefined {
   return useLiveQuery(async (): Promise<MatchView | null> => {
     const match = await db.matches.get(matchId)
     if (!match) return null
-    const [events, savedSquad, players] = await Promise.all([
+    const [events, savedSquad, players, team] = await Promise.all([
       listMatchEvents(db, matchId),
       getSquad(db, matchId),
       listPlayers(db, match.teamId),
+      db.teams.get(match.teamId),
     ])
     const state = replay(matchId, events)
     const playersById = new Map(players.map((p) => [p.id, p]))
@@ -37,6 +48,7 @@ export function useMatch(matchId: Id): MatchView | null | undefined {
       squad: squadIds.flatMap((id) => playersById.get(id) ?? []),
       playersById,
       isController: state.controllerDeviceId === null || state.controllerDeviceId === scope.deviceId,
+      testMode: Boolean(match.testMode) && isTestTeam(team),
     }
   }, [db, matchId, scope.deviceId])
 }

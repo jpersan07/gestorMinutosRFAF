@@ -112,6 +112,11 @@ export interface MatchRecord extends Tracked {
    * lo inició) una vez empezado el partido: nunca cambia a mitad de un periodo.
    */
   readonly clockOffset?: { readonly ms: number; readonly controlEventId: Id } | null
+  /**
+   * MODO PRUEBAS activado en este móvil (solo equipo DEMO, solo antes de PLAY). Dato LOCAL: no se
+   * sincroniza ni es dato oficial del partido; los eventos sí se guardan y suben como siempre.
+   */
+  readonly testMode?: { readonly enabledAt: EpochMs } | null
 }
 
 export interface MatchSquadRecord extends SyncTracked {
