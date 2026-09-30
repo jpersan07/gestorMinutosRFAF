@@ -10,6 +10,7 @@ import {
   getSquad,
   listPlayers,
   saveSquad,
+  seasonNotCalledUp,
   seasonPlayerTotals,
   type MatchRecord,
   type PlayerRecord,
@@ -24,13 +25,15 @@ interface SquadData {
   readonly players: readonly PlayerRecord[]
   readonly savedSquad: readonly Id[]
   readonly totals: ReadonlyMap<Id, PlayerTotals>
+  /** Partidos de la temporada en los que el jugador no fue convocado. */
+  readonly notCalledUp: ReadonlyMap<Id, number>
 }
 
 function sameSelection(a: ReadonlySet<Id>, b: readonly Id[]): boolean {
   return a.size === b.length && b.every((id) => a.has(id))
 }
 
-function SquadEditor({ match, players, savedSquad, totals }: SquadData) {
+function SquadEditor({ match, players, savedSquad, totals, notCalledUp }: SquadData) {
   const { db, env } = useApp()
   const coachId = useCoachId()
   const { run, busy, unexpected } = useAction()
@@ -125,9 +128,11 @@ function SquadEditor({ match, players, savedSquad, totals }: SquadData) {
                   onChange={() => toggle(player.id)}
                 />
                 <span className="tabular w-8 text-center text-lg font-black">{player.number}</span>
-                <span className="flex-1 truncate text-lg font-semibold">{player.name}</span>
-                <span className="tabular text-sm font-bold text-muted" title="Minutos esta temporada">
-                  {totals.get(player.id)?.totalMinutes ?? 0}'
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-lg font-semibold">{player.name}</span>
+                  <span className="tabular text-sm font-bold text-muted" title="Esta temporada">
+                    {totals.get(player.id)?.totalMinutes ?? 0} min · Sin convocar: {notCalledUp.get(player.id) ?? 0}
+                  </span>
                 </span>
               </label>
             </li>
@@ -173,7 +178,8 @@ export function SquadPage() {
       getSquad(db, matchId),
       seasonPlayerTotals(db, match.seasonId),
     ])
-    return { match, players, savedSquad: savedSquad ?? [], totals }
+    const notCalledUp = await seasonNotCalledUp(db, match.seasonId, players)
+    return { match, players, savedSquad: savedSquad ?? [], totals, notCalledUp }
   }, [db, matchId, scope.teamId])
 
   return (

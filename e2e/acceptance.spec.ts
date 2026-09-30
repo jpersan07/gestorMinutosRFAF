@@ -94,8 +94,8 @@ test('flujo completo del PRD §37', async ({ page }) => {
   await page.getByRole('button', { name: 'CONVOCATORIA' }).click()
   const rows = page.getByRole('listitem')
   await expect(rows.nth(0)).toContainText(p(1))
-  await expect(rows.nth(0)).toContainText("90'")
-  await expect(rows.filter({ hasText: p(10) })).toContainText("50'") // 0–30 + 70–90
-  await expect(rows.filter({ hasText: p(15) })).toContainText("10'")
-  await expect(rows.last()).toContainText("0'")
+  await expect(rows.nth(0)).toContainText('90 min · Sin convocar: 0')
+  await expect(rows.filter({ hasText: p(10) })).toContainText('50 min') // 0–30 + 70–90
+  await expect(rows.filter({ hasText: p(15) })).toContainText('10 min')
+  await expect(rows.last()).toContainText('0 min')
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aggregatePlayerTotals, computeMinutes, sortPlayersByMinutes, type MatchMinutesRecord } from '..'
+import { aggregatePlayerTotals, computeMinutes, countNotCalledUp, sortPlayersByMinutes, type MatchMinutesRecord } from '..'
 import { MatchHarness } from './harness'
 
 function finishedMatchRecord(matchId: string, play: (h: MatchHarness) => void): MatchMinutesRecord {
@@ -108,5 +108,43 @@ describe('orden de la convocatoria', () => {
     const original = [...players]
     sortPlayersByMinutes(players, new Map())
     expect(players).toEqual(original)
+  })
+})
+
+describe('SIN CONVOCAR', () => {
+  const players = [
+    { id: 'a', joinedAt: 0 },
+    { id: 'b', joinedAt: 0 },
+    { id: 'nuevo', joinedAt: 2_000 },
+  ]
+
+  it('cuenta los partidos en los que no estuvo convocado; convocado sin jugar no cuenta', () => {
+    const counts = countNotCalledUp(
+      [
+        { squad: ['a'], kickoffAt: 1_000 },
+        { squad: ['a', 'b'], kickoffAt: 3_000 },
+        { squad: ['a'], kickoffAt: 4_000 },
+      ],
+      players,
+    )
+    expect(counts.get('a')).toBe(0)
+    expect(counts.get('b')).toBe(2)
+  })
+
+  it('no cuenta partidos anteriores al alta del jugador en el equipo', () => {
+    const counts = countNotCalledUp(
+      [
+        { squad: ['a'], kickoffAt: 1_000 },
+        { squad: ['a'], kickoffAt: 2_000 },
+        { squad: ['a'], kickoffAt: 5_000 },
+      ],
+      players,
+    )
+    expect(counts.get('nuevo')).toBe(2) // a partir de su alta (2000), incluido
+  })
+
+  it('todos convocados: nadie suma; sin partidos: todos a 0', () => {
+    expect([...countNotCalledUp([{ squad: ['a', 'b', 'nuevo'], kickoffAt: 9_000 }], players).values()]).toEqual([0, 0, 0])
+    expect([...countNotCalledUp([], players).values()]).toEqual([0, 0, 0])
   })
 })

@@ -1,4 +1,4 @@
-import type { Id, Player } from '../types'
+import type { EpochMs, Id, Player } from '../types'
 
 /** Minutos de un jugador en un partido (proyección `player_match_minutes`). */
 export interface PlayerMatchMinutes {
@@ -50,6 +50,34 @@ export function aggregatePlayerTotals(records: readonly MatchMinutesRecord[]): M
     }
   }
   return totals
+}
+
+/** Convocatoria DEFINITIVA de un partido que cuenta para el histórico, y cuándo empezó. */
+export interface SquadDecision {
+  readonly squad: readonly Id[]
+  /** Cuándo quedó decidida (PLAY: la convocatoria queda congelada). */
+  readonly kickoffAt: EpochMs
+}
+
+/**
+ * "SIN CONVOCAR": en cuántos de esos partidos NO estuvo convocado cada jugador. Solo cuentan los
+ * partidos en los que el jugador ya pertenecía al equipo (dado de alta antes de PLAY). Qué partidos
+ * entran (temporada, solo finalizados…) lo decide quien llama; aquí solo se cuenta.
+ */
+export function countNotCalledUp(
+  decisions: readonly SquadDecision[],
+  players: ReadonlyArray<{ readonly id: Id; readonly joinedAt: EpochMs }>,
+): Map<Id, number> {
+  const counts = new Map(players.map((p) => [p.id, 0]))
+  for (const decision of decisions) {
+    const called = new Set(decision.squad)
+    for (const player of players) {
+      if (player.joinedAt <= decision.kickoffAt && !called.has(player.id)) {
+        counts.set(player.id, (counts.get(player.id) ?? 0) + 1)
+      }
+    }
+  }
+  return counts
 }
 
 /**
