@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../app/auth/AuthContext'
-import { authErrorMessage, isNetworkError } from '../../app/auth/messages'
+import { resetRequestError } from '../../app/auth/messages'
 import { Button } from '../../ui/Button'
 import { TextField } from '../../ui/TextField'
 import { AuthLayout } from './AuthLayout'
@@ -27,11 +27,10 @@ export function ForgotPasswordPage() {
     })
     setBusy(false)
     // Mismo mensaje exista o no la cuenta: no se revela qué emails están registrados.
-    // Solo se informa de lo que el entrenador puede resolver: sin conexión o demasiados intentos.
-    const rateLimited =
-      requestError?.code === 'over_email_send_rate_limit' || requestError?.code === 'over_request_rate_limit'
-    if (requestError && (isNetworkError(requestError) || rateLimited)) {
-      setError(authErrorMessage(requestError, 'reset-request'))
+    // Solo se informa de: sin conexión, demasiados intentos o fallo del servidor al enviar.
+    const failure = resetRequestError(requestError)
+    if (failure) {
+      setError(failure)
       return
     }
     setSent(true)
